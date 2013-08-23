@@ -1,0 +1,141 @@
+random thoughts (for the battle system)
+
+battle effects can be immediate or lasting
+lasting effects need to be able to "end"
+ - end after N turns
+ - end upon some event happening
+ 
+effects can produce more effects?
+ - burn/poison can produce damage at the end of a turn
+ - retaliation can produce damage in response to taking damage
+ - immunity can prevent certain effects on a target
+ - buffs/boons can add stat bonuses to a target
+ 
+effects can modify/reject new effects
+ - immunity prevents incoming damage/etc
+ - resistance lowers incoming damage/etc
+ 
+effects can affect turn taking
+ - target acts twice in a turn
+ - target can't act this turn
+ 
+what events do effects respond to?
+ - turn start/end
+ - skill use
+ - another effect being applied
+ 
+effects can be caused by effects
+ - which in turn could be caused by other effects
+ - which ultimately were caused by a skill usage
+ 
+Event = when an effect actually gets applied/when something happens
+ - took damage
+ - gained a stat bonus
+ - lasting effect wore off
+ - turn start/end
+ - skill used
+ 
+Turn taking system
+ - decides who acts, in what order
+ - taking a turn is an effect
+ - the system is the original generator of effects
+ - "Take Turn" effect causes "Skill Used" effect
+ 
+ 
+ 
+========================
+
+
+Effect
+ - priority: Int
+ - visit(effect: Effect): List[Effect]
+ - apply(): Event
+
+Event
+ - message: String
+ - apply(): Unit
+ 
+Example run:
+
+Turn taking system starts up:
+ - Player 1 . Take Turn
+  - Event(SkillUse(attack, 120dmg, Enemy))
+   - Effect(Damage(Enemy, 120dmg))
+    - Enemy's defense Effect visits damage effect
+	- Result is Effect(Damage(Enemy, 80dmg))
+	 - Event Enemy takes 80dmg
+	 
+Reformulate this better as Effect/Event
+
+Event[ Turn Taking System ] -> 
+ Effect[ Player 1 Takes a Turn ] -> 
+  Event[ Player 1 uses Attack on Enemy ] ->
+   Effect[ 120 Damage to Enemy ] x
+   VisitEffect[ Enemy Defense => Effect[ 80 Damage to Enemy ] ] ->
+    Event[ Enemy takes 80 dmg ]
+
+All actions should produce events
+Some events may be reacted to by effects, producing more (actions/effects)(?)
+
+Event => List[Event]
+
+Events input to the "system". Chance to modify or react to the event.
+Afterward, the event may yield any number of new events, that are also
+put into the system in turn.
+
+Turn Taking: EventList( [player 1 take turn], [enemy take turn] )
+ 	enter [player 1 take turn] to the events
+ 		-no changes
+ 		-yields [player 1 uses Attack]
+ 	enter [player 1 uses Attack] to the events
+ 		-no changes
+ 		-no reactions
+ 		-yields [apply 120 damage to enemy]
+ 	enter [apply 120 damage to enemy] to events
+ 		-enemy's defense modifies it to [apply 80 damage to enemy]
+ 		-no reactions
+ 		-yields [enemy takes 80 damage]
+ 	enter [enemy takes 80 damage] to events
+ 		-no changes
+ 		-no reactions
+ 		-yields Nil
+	enter [enemy take turn] to events
+		.. yadda yadda
+
+Example of reactions: 
+
+Turn Taking: EventList( [player 1 take turn], [enemy take turn] )
+	enter [player 1 take turn] to events
+		-no changes
+		-no reactions
+		-yields [player 1 casts Retaliation]
+	enter [player 1 casts Retaliation] to events
+		-no changes
+		-no reactions
+		-yields [add RetaliationEffect to player 1]
+	enter [add RetaliationEffect to player 1]
+		-no changes
+		-react by actually adding the retaliation effect to player 1
+		-yields Nil
+	enter [enemy take turn] to events
+		-no changes
+		-no reactions
+		-yields [enemy uses Attack]
+	enter [enemy uses Attack] to events
+		-no changes
+		-no reactions
+		-yields [apply 120 damage to player 1]
+	enter [apply 120 damage to player 1]
+		-player's defense modifies it to [apply 80 damage to player 1]
+		-no reactions
+		-yields [player takes 80 damage]
+	enter [player takes 80 damage]
+		-no changes
+		-player's retribution reacts with [enemy takes 80 damage]
+		-player loses 80 HP
+		-yields Nil
+
+		
+Action => Affectors => Reaction <: Action
+	Means that for every action, a set of affectors decide what reaction may happen.
+	A Reaction may be another action, in which case the situation would recurse.

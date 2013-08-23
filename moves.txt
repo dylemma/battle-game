@@ -1,0 +1,54 @@
+Normal Attack:
+	Single Target
+	Weapon-based Damage
+
+Retaliation (move):
+	Adds Retaliation (effect) to user
+	effect lasts for one usage
+
+Retaliation (effect):
+	Self Target
+	Deals damage back to the source of any damage that target takes
+
+Turn Boost:
+	Target Ally
+	Target may act twice during its next turn
+
+Stat Boost:
+	Single Target
+	Adds a stat boost to target for some number of turns
+	
+Fireball:
+	Single Target
+	Deals fire damage to target
+	Percent chance to burn target
+
+Burn (effect)
+	Deals damage to victim at the end of each turn
+	Lingers after battle
+	Exclusive with other effects that linger after battle
+
+Sleep (effect)
+	Ends after a predetermined number of turns, at the beginning of the turn
+	Replaces victim's actions with "Victim is Asleep"
+	Does not affect action selection
+	Lingers after battle
+	Exclusive with other effects that linger after battle
+
+Rest:
+	Cancels any negative status condition
+	Adds Sleep (effect) to user for 2 turns
+	Restores all HP
+
+Meditate:
+	Restores 1/4 of user's MP
+
+Confusion (effect)
+	Random chance to either
+	 - Deal attack-based damage to victim instead of letting victim act
+	 - act normally
+	Ends after Rand(1,3) turns
+	
+Bounce (effect):
+	any ranged move that targets the bearer will be redirected at the user
+	

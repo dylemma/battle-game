@@ -1,0 +1,1 @@
+name := "BattleV2"organization := "io.dylemma"scalaVersion := "2.10.0"version := "0.1-SNAPSHOT"

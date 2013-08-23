@@ -1,0 +1,28 @@
+Events:
+
+	Skill Used
+		"X used Y"
+	Turn Begin
+	Select Action
+		"pick what you're going to do"
+	Turn End
+	Effect Added
+		"X became Poisoned|Burned|Sleepy|Confused|etc"
+		"X gained Retaliation"
+	Effect Removed
+		"X woke up"
+		"Retaliation wore off"
+	Resource Loss
+		"X took Y damage of type Z, caused by W"
+		"X spent Y of resource Z"
+	Resource Gain
+		"X recovered Y of resource Z"
+		"X healed Y for Z HP"
+		
+EventProcessor:
+
+	Each processor has a priority, which affects the order in which processors get access to the queue.
+	Processors may "cancel" an event, which effectively nullifies it.
+	Processors may "react" with further events, pushing them onto the back of the queue.
+	Combining "cancel" and "react" effectively replaces the event.
+	Processors may choose to simply ignore events.
