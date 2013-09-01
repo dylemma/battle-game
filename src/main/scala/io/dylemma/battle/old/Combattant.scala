@@ -1,10 +1,15 @@
 package io.dylemma.battle.old
 
 import scala.util.Random
+import io.dylemma.battle._
 import ResourceKey._
 import SkillCostDSL._
 import StatKey._
+import io.dylemma.battle.StatKey
+import io.dylemma.battle.Stat
+import io.dylemma.battle.HasStats
 
+@deprecated("in favor of io.dylemma.battle.Combattant", "I said so")
 class Combattant extends HasResources with HasStats {
 	val hp = new Resource(100)
 	val mana = new Resource(50)

@@ -1,15 +1,32 @@
-package io.dylemma.battle.old
+package io.dylemma.battle
 
 class Resource(val max: Int) {
 	private var _current = max
 	def current = _current
 	private def current_=(c: Int) = { _current = c }
 
-	def restore(amount: Int): Unit = {
+	/** Restore the resource by the amount, returning the
+	  * actual amount that got restored (may be less in
+	  * case it would have been restored beyond the max).
+	  * @param amount The amount to restore
+	  * @return The actual amount restored
+	  */
+	def restore(amount: Int): Int = {
+		val start = current
 		current = math.min(max, current + amount)
+		current - start
 	}
-	def deplete(amount: Int): Unit = {
+
+	/** Deplete the resource by the amount, returning the
+	  * actual amount that got restored (may be less in
+	  * case it would have been restored beyond the max).
+	  * @param The amount to deplete
+	  * @return The actual amount depleted
+	  */
+	def deplete(amount: Int): Int = {
+		val start = current
 		current = math.max(0, current - amount)
+		start - current
 	}
 
 	def isFull = { current == max }

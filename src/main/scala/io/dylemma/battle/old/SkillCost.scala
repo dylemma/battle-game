@@ -1,5 +1,7 @@
 package io.dylemma.battle.old
 
+import io.dylemma.battle.ResourceKey
+
 sealed trait SkillCost { self =>
 	def canSpend(user: Combattant): Boolean
 	def spend(user: Combattant): Unit

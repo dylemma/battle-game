@@ -1,13 +1,68 @@
 package io.dylemma.battle
 
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext
+import language.implicitConversions
+
+sealed trait EventProcessorReaction {
+	def ++(that: EventProcessorReaction)(implicit exc: ExecutionContext): EventProcessorReaction
+	def asFuture: Future[EventReactions]
+}
+
+case class EventReactions(isCanceled: Boolean, appendedEvents: List[Event]) extends EventProcessorReaction {
+	def cancel = copy(isCanceled = true)
+	def +(event: Event) = copy(appendedEvents = this.appendedEvents :+ event)
+
+	def ++(that: EventProcessorReaction)(implicit exc: ExecutionContext) = that match {
+		case that: EventReactions => this +: that
+		case EventReactionsFuture(rFuture) => EventReactionsFuture(rFuture map { this +: _ })
+	}
+
+	def +:(that: EventReactions): EventReactions = {
+		EventReactions(
+			this.isCanceled || that.isCanceled,
+			this.appendedEvents ++ that.appendedEvents)
+	}
+
+	def asFuture = Future.successful(this)
+}
+
+case class EventReactionsFuture(reactions: Future[EventReactions]) extends EventProcessorReaction {
+
+	def ++(that: EventProcessorReaction)(implicit exc: ExecutionContext) = that match {
+		case that: EventReactions =>
+			EventReactionsFuture(for (r <- reactions) yield r +: that)
+		case EventReactionsFuture(thatF) =>
+			val newF = for {
+				thisF <- reactions
+				thatF <- thatF
+			} yield thisF +: thatF
+			EventReactionsFuture(newF)
+	}
+
+	def asFuture = reactions
+
+}
+
+object EventProcessor {
+	type Process = PartialFunction[Event, EventProcessorReaction]
+}
+
 trait EventProcessor extends Ordered[EventProcessor] {
-	def process(qe: QueuedEvent): Unit
+	def process(implicit exc: ExecutionContext): EventProcessor.Process
 	def priority: Int
 	def compare(that: EventProcessor) = {
 		val pdif = this.priority - that.priority
 		if (pdif != 0) pdif
 		else this.## - that.##
 	}
+
+	protected def reactions = EventReactions(false, Nil)
+
+	implicit def eventReactionFuture(r: Future[EventReactions]): EventProcessorReaction =
+		EventReactionsFuture(r)
+	implicit def unitToReactions(u: Unit): EventProcessorReaction = reactions
+	implicit def eventToReactions(e: Event): EventProcessorReaction = EventReactions(false, List(e))
 }
 
 trait Expiring extends EventProcessor { Self =>
@@ -16,16 +71,28 @@ trait Expiring extends EventProcessor { Self =>
 
 	private val expiration = expiresAfter
 
-	abstract override def process(qe: QueuedEvent) = qe.event match {
-		case EventProcessorRemoved(Self) =>
-			expiration.expire
-		case e =>
-			expiration.process(e)
-			if (expiration.shouldExpire) {
+	//	abstract override def process(qe: QueuedEvent) = qe.event match {
+	//		case EventProcessorRemoved(Self) =>
+	//			expiration.expire
+	//		case e =>
+	//			expiration.process(e)
+	//			if (expiration.shouldExpire) {
+	//				trace(s"$this should expire now")
+	//				qe.append(EventProcessorRemoved(this))
+	//			}
+	//			super.process(qe)
+	//	}
+
+	abstract override def process(implicit exc: ExecutionContext) = {
+		case EventProcessorRemoved(Self) => expiration.expire
+		case event =>
+			expiration process event
+			val expireActions = if (expiration.shouldExpire) {
 				trace(s"$this should expire now")
-				qe.append(EventProcessorRemoved(this))
-			}
-			super.process(qe)
+				reactions + EventProcessorRemoved(this)
+			} else reactions
+			val superReactions = super.process.lift(event).getOrElse(reactions)
+			expireActions ++ superReactions
 	}
 
 	trait Expiration {

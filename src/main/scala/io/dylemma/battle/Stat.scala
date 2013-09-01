@@ -1,4 +1,4 @@
-package io.dylemma.battle.old
+package io.dylemma.battle
 
 class Stat(val baseAmount: Int) {
 	private var bonuses: List[StatBonus] = Nil
