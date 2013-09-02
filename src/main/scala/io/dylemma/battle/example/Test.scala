@@ -18,7 +18,7 @@ object Test {
 	}
 
 	case class Ticker(duration: Int) extends BaseTicker with Expiring {
-		def expiresAfter = duration occurrancesOf TurnEnded
+		def expiresAfter = duration occurrancesOf TurnBegan
 	}
 
 	case object BurnDamage extends Event
@@ -35,8 +35,8 @@ object Test {
 	}
 
 	def main(args: Array[String]): Unit = {
-		logThreshold = Debug
-		val eq = new EventQueue(List(Ticker(0), Burned(3)))
+		logThreshold = Trace
+		val eq = new EventQueue(Ticker(2), Burned(1))
 
 		val end = eq.runEventQueue(List(
 			TurnBegan, TurnEnded,

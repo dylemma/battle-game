@@ -14,11 +14,11 @@ case class EventReactions(isCanceled: Boolean, appendedEvents: List[Event]) exte
 	def +(event: Event) = copy(appendedEvents = this.appendedEvents :+ event)
 
 	def ++(that: EventProcessorReaction)(implicit exc: ExecutionContext) = that match {
-		case that: EventReactions => this +: that
-		case EventReactionsFuture(rFuture) => EventReactionsFuture(rFuture map { this +: _ })
+		case that: EventReactions => this :+ that
+		case EventReactionsFuture(rFuture) => EventReactionsFuture(rFuture map { this :+ _ })
 	}
 
-	def +:(that: EventReactions): EventReactions = {
+	def :+(that: EventReactions): EventReactions = {
 		EventReactions(
 			this.isCanceled || that.isCanceled,
 			this.appendedEvents ++ that.appendedEvents)
@@ -31,12 +31,12 @@ case class EventReactionsFuture(reactions: Future[EventReactions]) extends Event
 
 	def ++(that: EventProcessorReaction)(implicit exc: ExecutionContext) = that match {
 		case that: EventReactions =>
-			EventReactionsFuture(for (r <- reactions) yield r +: that)
+			EventReactionsFuture(for (r <- reactions) yield r :+ that)
 		case EventReactionsFuture(thatF) =>
 			val newF = for {
 				thisF <- reactions
-				thatF <- thatF
-			} yield thisF +: thatF
+				that <- thatF
+			} yield thisF :+ that
 			EventReactionsFuture(newF)
 	}
 
@@ -63,6 +63,8 @@ trait EventProcessor extends Ordered[EventProcessor] {
 		EventReactionsFuture(r)
 	implicit def unitToReactions(u: Unit): EventProcessorReaction = reactions
 	implicit def eventToReactions(e: Event): EventProcessorReaction = EventReactions(false, List(e))
+	implicit def futureEventToReactions(e: Future[Event])(implicit exc: ExecutionContext): EventProcessorReaction =
+		EventReactionsFuture(for (event <- e) yield EventReactions(false, List(event)))
 }
 
 trait Expiring extends EventProcessor { Self =>
@@ -87,12 +89,12 @@ trait Expiring extends EventProcessor { Self =>
 		case EventProcessorRemoved(Self) => expiration.expire
 		case event =>
 			expiration process event
-			val expireActions = if (expiration.shouldExpire) {
+			if (expiration.shouldExpire) {
 				trace(s"$this should expire now")
 				reactions + EventProcessorRemoved(this)
-			} else reactions
-			val superReactions = super.process.lift(event).getOrElse(reactions)
-			expireActions ++ superReactions
+			} else {
+				super.process.lift(event).getOrElse(reactions)
+			}
 	}
 
 	trait Expiration {
@@ -113,7 +115,7 @@ trait Expiring extends EventProcessor { Self =>
 		def process(event: Event) = {
 			if (!isExpired) current += inc(event)
 		}
-		def shouldExpire = { current == count }
+		def shouldExpire = { current > count }
 	}
 
 	implicit class IntToExpirationBuilder(count: Int) {

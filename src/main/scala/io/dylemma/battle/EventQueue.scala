@@ -8,18 +8,24 @@ import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
 import scala.util.Failure
 import scala.util.Success
+import scala.concurrent.Await
 
-class EventQueue(initialProcessors: List[EventProcessor]) {
-	private val processors = SortedSet[EventProcessor](initialProcessors: _*)
+class EventQueue(processors: SortedSet[EventProcessor]) {
+	def this(pp: EventProcessor*) = this(SortedSet(pp: _*))
+	def this(pp: List[EventProcessor]) = this(SortedSet(pp: _*))
 
-	def runEventQueue(q: List[Event])(implicit exc: ExecutionContext): Future[Unit] = q match {
+	def runEventQueue(q: List[Event], callback: Event => Future[Unit] = { event => Future.successful() })(implicit exc: ExecutionContext): Future[EventQueue] = {
+		runEventQueue(q, callback, processors)
+	}
+
+	private def runEventQueue(q: List[Event], callback: Event => Future[Unit], processors: SortedSet[EventProcessor])(implicit exc: ExecutionContext): Future[EventQueue] = q match {
 
 		// Queue is empty
-		case Nil => Future successful ()
+		case Nil => Future successful this
 
 		// Special Case:
 		// ignore events that would remove a processor that doesn't exist
-		case EventProcessorRemoved(p) :: tail if !(processors contains p) => runEventQueue(tail)
+		case EventProcessorRemoved(p) :: tail if !(processors contains p) => runEventQueue(tail, callback, processors)
 
 		// Normal Operation:
 		// send event through processors for "cancel" and "append" ops
@@ -43,54 +49,33 @@ class EventQueue(initialProcessors: List[EventProcessor]) {
 				}
 			}
 
-			process(processors.toList).asFuture flatMap { reactions =>
-				if (!reactions.isCanceled) eventHappened(event)
-
-				runEventQueue(reactions.appendedEvents ++ laterEvents)
+			def doReactions(event: Event, reactions: EventReactions): Future[SortedSet[EventProcessor]] = {
+				if (reactions.isCanceled) Future successful processors
+				else {
+					debug(s"Event Happened: $event")
+					for {
+						_ <- callback(event)
+					} yield event match {
+						case EventProcessorAdded(p) => processors + p
+						case EventProcessorRemoved(p) => processors - p
+						case _ => processors
+					}
+				}
 			}
+
+			//			process(processors.toList).asFuture flatMap { reactions =>
+			//				if (!reactions.isCanceled) eventHappened(event)
+			//
+			//				runEventQueue(reactions.appendedEvents ++ laterEvents)
+			//			}
+
+			for {
+				reactions <- process(processors.toList).asFuture
+				newProcessors <- doReactions(event, reactions)
+				newQueue <- runEventQueue(reactions.appendedEvents ++ laterEvents, callback, newProcessors)
+			} yield newQueue
 		}
 	}
-
-	//	def enter(event: Event) = {
-	//		trace("Enter Event:", event)
-	//		val qq = new Queue[Event]
-	//		qq enqueue event
-	//
-	//		@tailrec def runEvents: Unit = qq.dequeueFirst { _ => true } match {
-	//
-	//			// Queue is empty
-	//			case None => // done
-	//
-	//			// Special Case:
-	//			// ignore events that would remove a processor that doesn't exist
-	//			case Some(EventProcessorRemoved(p)) if !(processors contains p) => runEvents
-	//
-	//			// Normal Operation:
-	//			// send event through processors for "cancel" and "append" ops
-	//			case Some(event) => {
-	//				val appends = List.newBuilder[Event]
-	//				var canceled = false
-	//
-	//				for (p <- processors.takeWhile(_ => !canceled)) {
-	//					val qe = event
-	//					trace(p, "process event:", event)
-	//					p.process(qe)
-	//					if (qe.canceled) trace(p, "Canceled", event)
-	//					for (a <- qe.appended) trace(p, "Appended", a)
-	//
-	//					appends ++= qe.appended
-	//					canceled |= qe.canceled
-	//				}
-	//
-	//				qq.enqueue(appends.result: _*)
-	//				if (!canceled) eventHappened(event)
-	//
-	//				runEvents
-	//			}
-	//		}
-	//
-	//		runEvents
-	//	}
 
 	def eventHappened(event: Event) = {
 		debug("Event Happened:", event)
@@ -102,47 +87,49 @@ class EventQueue(initialProcessors: List[EventProcessor]) {
 	}
 }
 
-//object EventQueue {
-//	case object EventA extends Event
-//	case object EventB extends Event
-//	case object EventC extends Event
-//
-//	case object EventAReaction extends Event
-//	val eventAReactor = new EventProcessor {
-//		override def toString = "eventAReactor"
-//		val priority = 0
-//		def process = {
-//			case EventA => reactions + EventAReaction
-//		}
-//	}
-//
-//	val eventBProcessor = new EventProcessor {
-//		override def toString = "eventBProcessor"
-//		val priority = 0
-//		def process(qe: QueuedEvent) = qe.event match {
-//			case EventB => qe.append(EventProcessorAdded(eventAReactor))
-//			case _ =>
-//		}
-//	}
-//
-//	case object EventCReplacement extends Event
-//
-//	val eventCProcessor = new EventProcessor {
-//		override def toString = "eventCProcessor"
-//		val priority = 0
-//		def process(qe: QueuedEvent) = qe.event match {
-//			case EventC => qe.cancel.append(EventCReplacement)
-//			case _ =>
-//		}
-//	}
-//
-//	//	def main(args: Array[String]): Unit = {
-//	//		val eq = new EventQueue(eventBProcessor, eventCProcessor)
-//	//		eq.enter(TurnBegan)
-//	//		eq.enter(EventA)
-//	//		eq.enter(EventB)
-//	//		eq.enter(EventA)
-//	//		eq.enter(EventC)
-//	//		eq.enter(TurnEnded)
-//	//	}
-//}
+object EventQueue {
+	case object EventA extends Event
+	case object EventB extends Event
+	case object EventC extends Event
+
+	case object EventAReaction extends Event
+	val eventAReactor = new EventProcessor {
+		override def toString = "eventAReactor"
+		val priority = 0
+		def process(implicit exc: ExecutionContext) = {
+			case EventA => EventAReaction
+		}
+	}
+
+	val eventBProcessor = new EventProcessor {
+		override def toString = "eventBProcessor"
+		val priority = 0
+		def process(implicit exc: ExecutionContext) = {
+			case EventB => EventProcessorAdded(eventAReactor)
+		}
+	}
+
+	case object EventCReplacement extends Event
+
+	val eventCProcessor = new EventProcessor {
+		override def toString = "eventCProcessor"
+		val priority = 0
+		def process(implicit exc: ExecutionContext) = {
+			case EventC => EventCReplacement
+		}
+	}
+
+	def main(args: Array[String]): Unit = {
+		import ExecutionContext.Implicits.global
+		import concurrent.duration._
+
+		val eq = new EventQueue(eventBProcessor, eventCProcessor)
+		val callback = (event: Event) => Future {
+			print("wait for it... ")
+			Thread.sleep(500)
+			println(s"Event happened: $event")
+		}
+		val end = eq.runEventQueue(List(TurnBegan, EventA, EventB, EventA, EventC, TurnEnded), callback)
+		Await.ready(end, 5.seconds)
+	}
+}
