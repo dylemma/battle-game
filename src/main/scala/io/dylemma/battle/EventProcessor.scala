@@ -12,7 +12,8 @@ trait EventProcessor extends Ordered[EventProcessor] {
 	def process(implicit exc: ExecutionContext): EventProcessor.Process
 	def priority: Int
 	def compare(that: EventProcessor) = {
-		val pdif = this.priority - that.priority
+		// order descending by priority: highest priority comes first
+		val pdif = that.priority - this.priority
 		if (pdif != 0) pdif
 		else this.## - that.##
 	}
