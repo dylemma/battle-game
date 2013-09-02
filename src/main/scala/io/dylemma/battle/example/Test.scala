@@ -9,34 +9,33 @@ import scala.concurrent.Await
 object Test {
 
 	case object Tick extends Event
-
-	trait BaseTicker extends EventProcessor {
-		def priority = 1
-		override def process(implicit exc: ExecutionContext) = {
-			case TurnBegan => Tick
-		}
-	}
-
-	case class Ticker(duration: Int) extends BaseTicker with Expiring {
-		def expiresAfter = duration occurrancesOf TurnBegan
-	}
-
 	case object BurnDamage extends Event
 
-	trait BaseBurnProcessor extends EventProcessor {
-		def priority = 0
-		override def process(implicit exc: ExecutionContext) = {
-			case TurnEnded => BurnDamage
+	/** Adds a `Tick` after each `TurnBegan`. Expires after `<duration>` Ticks.
+	  */
+	case class Ticker(duration: Int) extends ExpiringEventProcessor {
+		def priority = 1
+		private val exp = new ExpirationTicker(duration)
+		def process(implicit exc: ExecutionContext) = {
+			case TurnBegan => if (exp.check) expireMe else Tick
+			case Tick => if (exp.tickAndCheck) expireMe
 		}
 	}
 
-	case class Burned(duration: Int) extends BaseBurnProcessor with Expiring {
-		def expiresAfter = duration occurrancesOf TurnEnded
+	/** Adds a `BurnDamage` after each `TurnEnded`. Expires after `<duration>`
+	  * turn ends have passed.
+	  */
+	case class Burned(duration: Int) extends ExpiringEventProcessor {
+		def priority = 0
+		private val exp = new ExpirationTicker(duration)
+		def process(implicit exc: ExecutionContext) = {
+			case TurnEnded => if (exp.check) expireMe else { exp.tick; BurnDamage }
+		}
 	}
 
 	def main(args: Array[String]): Unit = {
 		logThreshold = Trace
-		val eq = new EventQueue(Ticker(2), Burned(1))
+		val eq = new EventQueue(Ticker(1), Burned(1))
 
 		val end = eq.runEventQueue(List(
 			TurnBegan, TurnEnded,
