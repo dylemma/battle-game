@@ -17,14 +17,14 @@ trait EventProcessor extends Ordered[EventProcessor] {
 		else this.## - that.##
 	}
 
-	protected def reactions = EventReactions(false, Nil)
+	protected def reactions = EventReactions()
 
 	implicit def eventReactionFuture(r: Future[EventReactions]): EventProcessorReaction =
 		EventReactionsFuture(r)
 	implicit def unitToReactions(u: Unit): EventProcessorReaction = reactions
-	implicit def eventToReactions(e: Event): EventProcessorReaction = EventReactions(false, List(e))
+	implicit def eventToReactions(e: Event): EventProcessorReaction = EventReactions(appendedEvents = List(e))
 	implicit def futureEventToReactions(e: Future[Event])(implicit exc: ExecutionContext): EventProcessorReaction =
-		EventReactionsFuture(for (event <- e) yield EventReactions(false, List(event)))
+		EventReactionsFuture(for (event <- e) yield EventReactions(appendedEvents = List(event)))
 }
 
 trait ExpiringEventProcessor extends EventProcessor {

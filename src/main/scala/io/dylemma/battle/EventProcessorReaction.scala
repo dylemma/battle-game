@@ -8,9 +8,15 @@ sealed trait EventProcessorReaction {
 	def asFuture: Future[EventReactions]
 }
 
-case class EventReactions(isCanceled: Boolean, appendedEvents: List[Event]) extends EventProcessorReaction {
+case class EventReactions(
+	isCanceled: Boolean = false,
+	replacement: Option[Event] = None,
+	appendedEvents: List[Event] = Nil)
+	extends EventProcessorReaction {
+
 	def cancel = copy(isCanceled = true)
 	def +(event: Event) = copy(appendedEvents = this.appendedEvents :+ event)
+	def replaceWith(event: Event) = copy(replacement = Some(event))
 
 	def ++(that: EventProcessorReaction)(implicit exc: ExecutionContext) = that match {
 		case that: EventReactions => this :+ that
@@ -20,6 +26,7 @@ case class EventReactions(isCanceled: Boolean, appendedEvents: List[Event]) exte
 	def :+(that: EventReactions): EventReactions = {
 		EventReactions(
 			this.isCanceled || that.isCanceled,
+			that.replacement orElse this.replacement, // `that`'s replacement should override this one
 			this.appendedEvents ++ that.appendedEvents)
 	}
 
