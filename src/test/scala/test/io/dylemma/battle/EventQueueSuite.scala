@@ -9,7 +9,7 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext
 
-class EventQueueSuite extends FunSuite with AsyncAssertions {
+class EventQueueSuite extends FunSuite {
 
 	def collectHappenedEvents(queue: EventQueue, inputEvents: List[Event]): Future[List[Event]] = {
 		val lb = List.newBuilder[Event]
