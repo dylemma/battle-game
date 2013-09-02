@@ -60,7 +60,7 @@ class EventQueue(processors: SortedSet[EventProcessor]) {
 		else {
 			// if there was a replacement, use that instead of the given `event`
 			val actualEvent = reactions.replacement getOrElse event
-			debug(s"Event Happened: actualEvent")
+			debug(s"Event Happened: $actualEvent")
 
 			// run the event callback, then yield the new set of event processors in case
 			// there was an addition or removal
@@ -130,8 +130,9 @@ object EventQueue {
 	case object EventA extends Event
 	case object EventB extends Event
 	case object EventC extends Event
-
 	case object EventAReaction extends Event
+	case object EventCReplacement extends Event
+
 	val eventAReactor = new EventProcessor {
 		override def toString = "eventAReactor"
 		val priority = 0
@@ -148,13 +149,13 @@ object EventQueue {
 		}
 	}
 
-	case object EventCReplacement extends Event
-
 	val eventCProcessor = new EventProcessor {
 		override def toString = "eventCProcessor"
 		val priority = 0
 		def process(implicit exc: ExecutionContext) = {
-			case EventC => EventCReplacement
+			case EventC =>
+				debug("Saw EventC; replacing it with EventCReplacement")
+				reactions replaceWith EventCReplacement
 		}
 	}
 
