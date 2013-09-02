@@ -37,7 +37,7 @@ class EventQueue(processors: SortedSet[EventProcessor]) {
 		case EventProcessorRemoved(p) :: tail if !(processors contains p) => runEventQueue(tail, callback, processors)
 
 		// Normal Operation:
-		// send event through processors for "cancel" and "append" ops
+		// send event through processors to get the accumulated reactions
 		case event :: laterEvents => {
 
 			for {
