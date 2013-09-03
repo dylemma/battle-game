@@ -16,7 +16,7 @@ class Combattant(params: CombattantParam*) extends HasResources with HasStats {
 	val stats = {
 		val s = for {
 			CombattantStat(key, value) <- params
-		} yield key -> new Stat(value)
+		} yield key -> value
 		s.toMap
 	}
 
