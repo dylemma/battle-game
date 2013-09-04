@@ -7,6 +7,9 @@ case object TurnEnded extends Event
 case class EventProcessorAdded(p: EventProcessor) extends Event
 case class EventProcessorRemoved(p: EventProcessor) extends Event
 
+case class AddBattleModifier(modifier: BattleModifier) extends Event
+case class RemoveBattleModifier(modifier: BattleModifier) extends Event
+
 case class AboutToDamageResource(
 	target: Target, resource: ResourceKey, damage: Damage, affiliation: Affiliation)
 	extends Event
