@@ -1,31 +1,46 @@
 package io.dylemma.battle
 
-trait Event
+trait Event {
+	def calculatePriority(mods: BattleModifiers): Priority
+}
 
-case object TurnBegan extends Event
-case object TurnEnded extends Event
-case class EventProcessorAdded(p: EventProcessor) extends Event
-case class EventProcessorRemoved(p: EventProcessor) extends Event
+trait UnprioritizedEvent extends Event {
+	def calculatePriority(mods: BattleModifiers) = Priority()
+}
 
-case class AddBattleModifier(modifier: BattleModifier) extends Event
-case class RemoveBattleModifier(modifier: BattleModifier) extends Event
+object Event {
+	val fleePriority = 3
+	val itemPriority = 2
+	val skillPriority = 1
+}
 
-case class AboutToDamageResource(
-	target: Target, resource: ResourceKey, damage: Damage, affiliation: Affiliation)
-	extends Event
+// Turn Begin+End Markers
+case object TurnBegin extends Event with UnprioritizedEvent
+case object TurnEnd extends Event with UnprioritizedEvent
 
-case class DamagedResource(
-	target: Target, resource: ResourceKey, damage: Damage, affiliation: Affiliation)
-	extends Event
+// Damage and Healing
+case class DamageResource(target: HasResources, resource: ResourceKey, damage: Damage) extends Event with UnprioritizedEvent
+case class RestoreResource(target: HasResources, resource: ResourceKey, amount: Int) extends Event with UnprioritizedEvent
 
-case class AboutToRestoreResource(
-	target: Target, resource: ResourceKey, amount: Int, affiliation: Affiliation)
-	extends Event
+// Add+Remove Battle Modifiers
+case class AddBattleModifier(mod: BattleModifier) extends Event with UnprioritizedEvent
+case class RemoveBattleModifier(mod: BattleModifier) extends Event with UnprioritizedEvent
 
-case class RestoredResource(
-	target: Target, resource: ResourceKey, amount: Int, affiliation: Affiliation)
-	extends Event
+// Add+Remove Event Handlers
+case class AddEventHandler(handler: EventHandler) extends Event with UnprioritizedEvent
+case class RemoveEventHandler(handler: EventHandler) extends Event with UnprioritizedEvent
 
-case class TargetFainted(target: Target) extends Event
+trait Item // TODO: implement
 
-case class SkillUsed(skill: Skill, user: Combattant, target: Target) extends Event
+sealed trait Action
+case class SkillUse(skill: Skill, target: Target) extends Action
+case class ItemUse(item: Item, target: Target) extends Action
+case object Flee extends Action
+
+case class CombattantAction(combattant: Combattant, action: Action) extends Event {
+	def calculatePriority(mods: BattleModifiers) = action match {
+		case Flee => Priority(Event.fleePriority)
+		case ItemUse(item: Item, target: Target) => Priority(Event.itemPriority)
+		case SkillUse(skill: Skill, target: Target) => Priority(Event.skillPriority) #> skill.calculatePriority(combattant, target, mods)
+	}
+}

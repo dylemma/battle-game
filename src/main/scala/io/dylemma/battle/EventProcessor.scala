@@ -1,42 +1,82 @@
 package io.dylemma.battle
 
-import scala.concurrent.Future
-import scala.concurrent.ExecutionContext
-import language.implicitConversions
+import EventHandlerHelpers._
+import scala.util.DynamicVariable
+
+//TODO: test that this works...
 
 object EventProcessor {
-	type Process = PartialFunction[Event, EventProcessorReaction]
+	private[EventProcessor] val callbackVar: DynamicVariable[Event => Unit] =
+		new DynamicVariable(_ => ())
 }
 
-trait EventProcessor extends Ordered[EventProcessor] {
-	def process(implicit exc: ExecutionContext): EventProcessor.Process
-	def priority: Int
-	def compare(that: EventProcessor) = {
-		// order descending by priority: highest priority comes first
-		val pdif = that.priority - this.priority
-		if (pdif != 0) pdif
-		else this.## - that.##
+case class EventProcessor(handlers: Set[EventHandler], mods: BattleModifiers) {
+
+	private def eventCallback = EventProcessor.callbackVar.value
+
+	def withEventCallback[T](callback: Event => Unit)(body: => T): T =
+		EventProcessor.callbackVar.withValue(callback)(body)
+
+	def process(event: Event): EventProcessor = {
+		def innerProcess(events: List[Event], processor: EventProcessor): EventProcessor = events match {
+			case Nil => processor
+			case event :: moreEvents =>
+				val (addedEvents, newProcessor) = processor.processSingle(event)
+				val nextEvents = (moreEvents ++ addedEvents).sortBy { _.calculatePriority(newProcessor.mods) }
+				innerProcess(nextEvents, newProcessor)
+		}
+		innerProcess(event :: Nil, this)
 	}
 
-	protected def reactions = EventReactions()
-
-	implicit def eventReactionFuture(r: Future[EventReactions]): EventProcessorReaction =
-		EventReactionsFuture(r)
-	implicit def unitToReactions(u: Unit): EventProcessorReaction = reactions
-	implicit def eventToReactions(e: Event): EventProcessorReaction = EventReactions(appendedEvents = List(e))
-	implicit def futureEventToReactions(e: Future[Event])(implicit exc: ExecutionContext): EventProcessorReaction =
-		EventReactionsFuture(for (event <- e) yield EventReactions(appendedEvents = List(event)))
-}
-
-trait ExpiringEventProcessor extends EventProcessor {
-
-	class ExpirationTicker(ticks: Int) {
-		private var t = 0
-		def tickAndCheck: Boolean = { tick; check }
-		def check: Boolean = { t >= ticks }
-		def tick: Unit = { t += 1 }
+	def processAll(events: Event*): EventProcessor = {
+		events.foldLeft(this) { _ process _ }
 	}
 
-	def expireMe: Event = EventProcessorRemoved(this)
+	protected def processSingle(event: Event): (List[Event], EventProcessor) = {
+		val handlersSorted = handlers.toList.sortBy(_.priority)
+		val readyEvent = getPreReaction(Some(event))
+		readyEvent match {
+			case None => Nil -> this
+			case Some(event) =>
+				eventCallback(event)
+				val newProcessor = updateForEvent(event)
+				val postReactions = newProcessor.getPostReactions(event)
+				val addedEvents = postReactions collect { case NewEvent(e) => e }
+				addedEvents -> newProcessor
+		}
+	}
 
+	protected def getPreReaction(event: Option[Event]): Option[Event] = {
+		val handlersSorted = handlers.toList.sortBy(_.priority)
+
+		def recurse(event: Option[Event], handlers: List[EventHandler]): Option[Event] = handlers match {
+			case Nil => event
+			case handler :: nextHandlers => event flatMap { e =>
+				val r = handler.handlePreEvent(mods).lift(e).flatten
+				r match {
+					case None => recurse(event, nextHandlers)
+					case Some(CancelEvent) => None
+					case Some(ReplaceEvent(rep)) => recurse(Some(rep), nextHandlers)
+				}
+			}
+		}
+
+		recurse(event, handlersSorted)
+	}
+
+	protected def updateForEvent(event: Event) = event match {
+		case AddBattleModifier(mod) => this.copy(mods = mods + mod)
+		case RemoveBattleModifier(mod) => this.copy(mods = mods - mod)
+		case AddEventHandler(handler) => this.copy(handlers = handlers + handler)
+		case RemoveEventHandler(handler) => this.copy(handlers = handlers - handler)
+		case _ => this
+	}
+
+	protected def getPostReactions(event: Event): List[PostEventReaction] = {
+		val noReactions: List[PostEventReaction] = Nil
+		handlers.foldLeft(noReactions) { (reactions, handler) =>
+			val r2 = handler.handlePostEvent(mods).lift(event) getOrElse Nil
+			reactions ++ r2
+		}
+	}
 }

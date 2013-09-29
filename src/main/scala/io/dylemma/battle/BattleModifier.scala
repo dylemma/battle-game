@@ -1,6 +1,5 @@
 package io.dylemma.battle
 
-import scala.collection.immutable.SortedSet
 import scala.collection.GenTraversableOnce
 
 trait BattleModifier
@@ -13,4 +12,8 @@ class BattleModifiers(val modifiers: Set[BattleModifier]) extends HasStatModifie
 	def -(mod: BattleModifier) = new BattleModifiers(modifiers - mod)
 	def ++(mods: GenTraversableOnce[BattleModifier]) = new BattleModifiers(modifiers ++ mods)
 	def --(mods: GenTraversableOnce[BattleModifier]) = new BattleModifiers(modifiers -- mods)
+}
+
+object BattleModifiers {
+	lazy val empty = new BattleModifiers(Nil)
 }

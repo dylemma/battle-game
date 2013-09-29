@@ -7,23 +7,49 @@ import DamageType._
 import Affiliation._
 import scala.concurrent.ExecutionContext
 
-trait Skill
-
-object Skills {
-	case object Slash extends Skill
-	case object Stab extends Skill
-	case object Smash extends Skill
+trait Skill {
+	def calculatePriority(user: Combattant, target: Target, mods: BattleModifiers): Priority
+	def activate(user: Combattant, target: Target, mods: BattleModifiers): List[Event]
 }
 
-object SkillProcessor extends EventProcessor {
-	def priority = 1
+trait UnprioritizedSkill extends Skill {
+	def calculatePriority(user: Combattant, target: Target, mods: BattleModifiers) = Priority(0)
+}
 
-	def process(implicit exc: ExecutionContext) = {
-		case SkillUsed(skill, user, target) => skill match {
-			case Slash => AboutToDamageResource(target, HP, Damage(10, Slashing), Hostile)
-			case Stab => AboutToDamageResource(target, HP, Damage(10, Piercing), Hostile)
-			case Smash => AboutToDamageResource(target, HP, Damage(10, Blunt), Hostile)
-			case _ => ()
+object Skills extends TargetHelpers {
+
+	case object Slash extends Skill with UnprioritizedSkill {
+		def activate(user: Combattant, target: Target, mods: BattleModifiers) = {
+			target.project[HasResources].toList map { t =>
+				DamageResource(t, HP, Damage(10, Slashing))
+			}
 		}
+	}
+
+	case object Stab extends Skill with UnprioritizedSkill {
+		def activate(user: Combattant, target: Target, mods: BattleModifiers) = {
+			target.project[HasResources].toList map { t =>
+				DamageResource(t, HP, Damage(10, Piercing))
+			}
+		}
+	}
+
+	case object Smash extends Skill with UnprioritizedSkill {
+		def activate(user: Combattant, target: Target, mods: BattleModifiers) = {
+			target.project[HasResources].toList map { t =>
+				DamageResource(t, HP, Damage(10, Blunt))
+			}
+		}
+	}
+}
+
+object SkillProcessor extends EventHandler {
+	def priority = Priority(1)
+
+	def handlePreEvent(mods: BattleModifiers) = PartialFunction.empty
+
+	def handlePostEvent(mods: BattleModifiers) = {
+		case CombattantAction(user, SkillUse(skill, target)) =>
+			skill.activate(user, target, mods) map NewEvent
 	}
 }

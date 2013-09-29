@@ -18,12 +18,11 @@ object Damaging {
 	def main(args: Array[String]): Unit = {
 		logThreshold = Debug
 		val processor = new ResourceModificationProcessor
-		val q = new EventQueue(List(processor))
-		val target = CombattantTarget(hero)
+		val q = new EventProcessor(Set(processor), BattleModifiers.empty)
 
-		val end = q.runEventQueue(List(
-			AboutToDamageResource(target, HP, Damage(10, Fire), Hostile),
-			AboutToDamageResource(target, HP, Damage(25, Slashing), Hostile)))
-		Await.ready(end, 5.seconds)
+		q
+			.process(DamageResource(hero, HP, Damage(10, Fire)))
+			.process(DamageResource(hero, HP, Damage(25, Slashing)))
+
 	}
 }
