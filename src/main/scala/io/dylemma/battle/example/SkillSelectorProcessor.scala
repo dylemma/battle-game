@@ -2,6 +2,7 @@ package io.dylemma.battle.example
 
 import io.dylemma.battle._
 import ResourceKey._
+import StatKey._
 import DamageType._
 import Affiliation._
 import Combattant._
@@ -38,18 +39,18 @@ class SkillSelectorProcessor(skills: List[Skill], user: Combattant, defaultTarge
 
 object SkillSelectorProcessor {
 
-	val hero = new Combattant() { override def toString = "Hero" }
+	val hero = new Combattant(level(5), Strength -> 10, Agility -> 10) { override def toString = "Hero" }
 	val skills = {
 		import Skills._
 		List(Slash, Smash, Stab)
 	}
 
 	def main(args: Array[String]): Unit = {
-		val target = new CombattantTarget(new Combattant(HP -> 20) { override def toString = "Villain" })
+		val target = new CombattantTarget(new Combattant(HP -> 200, Strength -> 10) { override def toString = "Villain" })
 		val processor = new SkillSelectorProcessor(skills, hero, target)
 		val q = new EventProcessor(Set(processor, SkillProcessor, new ResourceModificationProcessor), BattleModifiers.empty)
 
-		val end = q.processAll(TurnBegin, TurnEnd, TurnBegin, TurnEnd)
+		for (_ <- 1 to 5) q.processAll(TurnBegin, TurnEnd)
 		println("(done)")
 	}
 }

@@ -17,6 +17,7 @@ object DamageFormula {
 
 	private def levelModifier(level: Int): Double = { (level * 0.4) + 2 }
 	private def defenseModifier(attack: Double, defense: Double): Double = { attack * 0.5 / (defense + 1) }
+	private def powerMultiplier = 0.5
 
 	/** Damage Calculation that generates a base damage amount based on the `basePower` along with
 	  * the attack and defense stats of the attacker and defender, respectively. If the defender is
@@ -31,7 +32,7 @@ object DamageFormula {
 		case (attacker, CombattantTarget(defender), mods) =>
 			val attack = mods.getEffectiveStat(attacker, attackStat)
 			val defense = mods.getEffectiveStat(defender, defenseStat)
-			basePower * levelModifier(attacker.level) * defenseModifier(attack, defense)
+			basePower * powerMultiplier * levelModifier(attacker.level) * defenseModifier(attack, defense)
 		case _ => 0
 	}
 
