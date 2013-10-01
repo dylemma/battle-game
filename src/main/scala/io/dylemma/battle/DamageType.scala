@@ -12,7 +12,7 @@ sealed trait DamageType {
 }
 
 /** Damage, as represented by an amount and a type */
-case class Damage(amount: Int, kind: DamageType)
+case class Damage(amount: Double, kind: DamageType)
 
 object DamageType {
 

@@ -6,14 +6,18 @@ import Combattant._
 
 class Combattant(params: CombattantParam*) extends HasResources with HasStats {
 
-	val resources = {
+	lazy val level = {
+		params collectFirst { case CombattantLevel(lv) => lv } getOrElse 1
+	}
+
+	lazy val resources = {
 		val r = for {
 			CombattantResource(key, max) <- params
 		} yield key -> new Resource(max)
 		r.toMap
 	}
 
-	val stats = {
+	lazy val stats = {
 		val s = for {
 			CombattantStat(key, value) <- params
 		} yield key -> value
@@ -32,4 +36,8 @@ object Combattant {
 
 	implicit def statInt2CombattantParam(kv: (StatKey, Int)): CombattantParam =
 		CombattantStat(kv._1, kv._2)
+
+	case class CombattantLevel(level: Int) extends CombattantParam
+
+	def level(lv: Int) = CombattantLevel(lv)
 }

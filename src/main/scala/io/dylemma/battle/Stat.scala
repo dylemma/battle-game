@@ -1,6 +1,6 @@
 package io.dylemma.battle
 
-sealed abstract class StatKey(val name: String, val shortName: String) {
+abstract class StatKey(val name: String, val shortName: String) {
 	override def toString = name
 }
 

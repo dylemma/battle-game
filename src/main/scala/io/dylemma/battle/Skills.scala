@@ -5,7 +5,7 @@ import StatKey._
 import ResourceKey._
 import DamageType._
 import Affiliation._
-import scala.concurrent.ExecutionContext
+import DamageFormula._
 
 trait Skill {
 	def calculatePriority(user: Combattant, target: Target, mods: BattleModifiers): Priority
@@ -19,25 +19,39 @@ trait UnprioritizedSkill extends Skill {
 object Skills extends TargetHelpers {
 
 	case object Slash extends Skill with UnprioritizedSkill {
+
+		val calcDamage = basicDamage(10, Strength, Strength) * randomChanceMultiplier * criticalMultiplier(0.1, 2)
+
 		def activate(user: Combattant, target: Target, mods: BattleModifiers) = {
 			target.project[HasResources].toList map { t =>
-				DamageResource(t, HP, Damage(10, Slashing))
+				val damage = calcDamage(user, target, mods)
+				DamageResource(t, HP, Damage(damage, Slashing))
 			}
 		}
 	}
 
 	case object Stab extends Skill with UnprioritizedSkill {
+
+		val calcDamage = basicDamage(10, Agility, Strength) *
+			randomChanceMultiplier * criticalMultiplier(0.2, 2)
+
 		def activate(user: Combattant, target: Target, mods: BattleModifiers) = {
 			target.project[HasResources].toList map { t =>
-				DamageResource(t, HP, Damage(10, Piercing))
+				val damage = calcDamage(user, target, mods)
+				DamageResource(t, HP, Damage(damage, Piercing))
 			}
 		}
 	}
 
 	case object Smash extends Skill with UnprioritizedSkill {
+
+		val calcDamage = basicDamage(15, Strength, Strength) *
+			randomChanceMultiplier * criticalMultiplier(0.05, 2)
+
 		def activate(user: Combattant, target: Target, mods: BattleModifiers) = {
 			target.project[HasResources].toList map { t =>
-				DamageResource(t, HP, Damage(10, Blunt))
+				val damage = calcDamage(user, target, mods)
+				DamageResource(t, HP, Damage(damage, Blunt))
 			}
 		}
 	}
