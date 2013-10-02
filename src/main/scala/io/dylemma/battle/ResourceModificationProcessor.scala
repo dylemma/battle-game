@@ -12,6 +12,8 @@ class ResourceModificationProcessor extends EventHandler {
 	def handlePostEvent(mods: BattleModifiers) = {
 		case DamageResource(target, res, dmg) =>
 			val resource = target getResource res
+			println("damage: " + dmg)
+			if (Damage.isCritical(dmg)) debug("A critical hit!")
 			val depleted = resource deplete dmg.amount.toInt
 			debug(s"$target lost $depleted $res")
 			Nil // TODO - death conditions?

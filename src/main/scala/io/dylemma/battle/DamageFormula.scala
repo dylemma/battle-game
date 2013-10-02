@@ -1,17 +1,26 @@
 package io.dylemma.battle
 
 import scala.util.Random
+import TargetHelpers._
+import Damage._
 
 object DamageFormula {
 
-	type DamageCalculation = (Combattant, Target, BattleModifiers) => Double
+	type DamageCalculation = (Combattant, Target, BattleModifiers) => Damage
+	type DamageModification = (Combattant, Target, BattleModifiers) => (Damage => Damage)
 
-	implicit class DamageCalculationCombiner(dc: DamageCalculation) {
-		def *(that: DamageCalculation): DamageCalculation = {
-			(a, d, m) => dc(a, d, m) * that(a, d, m)
+	/** Allows chaining of DamageModifications and Decorators on a DamageCalculation via the `~` method */
+	implicit class DamageCalculationCombiner(calculation: DamageCalculation) {
+		def ~(modifier: DamageModification): DamageCalculation = {
+			(a, d, m) =>
+				val calc = calculation(a, d, m)
+				val mod = modifier(a, d, m)
+				mod(calc)
 		}
-		def +(that: DamageCalculation): DamageCalculation = {
-			(a, d, m) => dc(a, d, m) + that(a, d, m)
+		def ~(decorator: Damage.Decorator): DamageCalculation = {
+			(a, d, m) =>
+				val calc = calculation(a, d, m)
+				decorator.decorate(calc)
 		}
 	}
 
@@ -29,11 +38,14 @@ object DamageFormula {
 	  * @return A damage amount (0 or greater)
 	  */
 	def basicDamage(basePower: Int, attackStat: StatKey, defenseStat: StatKey): DamageCalculation = {
-		case (attacker, CombattantTarget(defender), mods) =>
-			val attack = mods.getEffectiveStat(attacker, attackStat)
-			val defense = mods.getEffectiveStat(defender, defenseStat)
-			basePower * powerMultiplier * levelModifier(attacker.level) * defenseModifier(attack, defense)
-		case _ => 0
+		case (attacker, defender, mods) =>
+			val dmgOpt = for (defStats <- defender.project[HasStats]) yield {
+				val attack = mods.getEffectiveStat(attacker, attackStat)
+				val defense = mods.getEffectiveStat(defStats, defenseStat)
+				val amount = basePower * powerMultiplier * levelModifier(attacker.level) * defenseModifier(attack, defense)
+				Damage(amount)
+			}
+			dmgOpt getOrElse Damage(0)
 	}
 
 	/** Damage Calculation that returns a critical-hit multipler.
@@ -41,24 +53,26 @@ object DamageFormula {
 	  * @param mult The damage multiplier upon getting a crit
 	  * @return The damage multiplier which will be 1 if no crit, or `mult` if crit.
 	  */
-	def criticalMultiplier(baseChance: Double, mult: Double): DamageCalculation = {
+	def criticalMultiplier(baseChance: Double, mult: Double): DamageModification = {
 		/*
 		 * Currently the inputs have no effect on the crit chance, but in the future,
 		 * some modifiers could potentially alter the chance or multiplier.
 		 */
-		case _ =>
+		case (attacker, defender, mods) => originalDamage =>
+
 			val c = Random.nextDouble // [0.0 ... 1.0]
-			if (c <= baseChance) mult
-			else 1.0
+			if (c <= baseChance) originalDamage x Critical(mult)
+			else originalDamage
 	}
 
 	/** Damage Calculation that returns a damage multiplier based on random chance.
 	  * @return A damage multiplier in between 85% and 100% inclusive.
 	  */
-	def randomChanceMultiplier: DamageCalculation = {
-		case _ =>
+	def randomChanceMultiplier: DamageModification = {
+		case (attacker, defender, mods) => originalDamage =>
 			val minus = Random.nextInt(16) // returns one of [0..15]
-			(100 - minus) * 0.01
+			val mult = (100 - minus) * 0.01
+			originalDamage x Multiplier(mult)
 	}
 
 }

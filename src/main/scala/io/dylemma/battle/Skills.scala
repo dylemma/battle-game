@@ -6,6 +6,7 @@ import ResourceKey._
 import DamageType._
 import Affiliation._
 import DamageFormula._
+import Damage._
 
 trait Skill {
 	def calculatePriority(user: Combattant, target: Target, mods: BattleModifiers): Priority
@@ -20,38 +21,33 @@ object Skills extends TargetHelpers {
 
 	case object Slash extends Skill with UnprioritizedSkill {
 
-		val calcDamage = basicDamage(10, Strength, Strength) * randomChanceMultiplier * criticalMultiplier(0.1, 2)
+		val calcDamage = basicDamage(10, Strength, Strength) ~ Slashing ~ randomChanceMultiplier ~ criticalMultiplier(0.1, 2)
 
 		def activate(user: Combattant, target: Target, mods: BattleModifiers) = {
 			target.project[HasResources].toList map { t =>
-				val damage = calcDamage(user, target, mods)
-				DamageResource(t, HP, Damage(damage, Slashing))
+				DamageResource(t, HP, calcDamage(user, target, mods))
 			}
 		}
 	}
 
 	case object Stab extends Skill with UnprioritizedSkill {
 
-		val calcDamage = basicDamage(10, Agility, Strength) *
-			randomChanceMultiplier * criticalMultiplier(0.2, 2)
+		val calcDamage = basicDamage(10, Agility, Strength) ~ Piercing ~ randomChanceMultiplier ~ criticalMultiplier(0.2, 2)
 
 		def activate(user: Combattant, target: Target, mods: BattleModifiers) = {
 			target.project[HasResources].toList map { t =>
-				val damage = calcDamage(user, target, mods)
-				DamageResource(t, HP, Damage(damage, Piercing))
+				DamageResource(t, HP, calcDamage(user, target, mods))
 			}
 		}
 	}
 
 	case object Smash extends Skill with UnprioritizedSkill {
 
-		val calcDamage = basicDamage(15, Strength, Strength) *
-			randomChanceMultiplier * criticalMultiplier(0.05, 2)
+		val calcDamage = basicDamage(15, Strength, Strength) ~ Blunt ~ randomChanceMultiplier ~ criticalMultiplier(0.05, 2)
 
 		def activate(user: Combattant, target: Target, mods: BattleModifiers) = {
 			target.project[HasResources].toList map { t =>
-				val damage = calcDamage(user, target, mods)
-				DamageResource(t, HP, Damage(damage, Blunt))
+				DamageResource(t, HP, calcDamage(user, target, mods))
 			}
 		}
 	}
