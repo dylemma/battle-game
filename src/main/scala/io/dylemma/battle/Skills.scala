@@ -24,7 +24,7 @@ object Skills extends TargetHelpers {
 		val calcDamage = basicDamage(10, Strength, Strength) ~ Slashing ~ attackerSource ~ randomChanceMultiplier ~ criticalMultiplier(0.1, 2)
 
 		def activate(user: Combattant, target: Target, mods: BattleModifiers) = {
-			target.project[HasResources].toList map { t =>
+			target.projectAs[HasResources].toList map { t =>
 				DamageResource(t, HP, calcDamage(user, target, mods))
 			}
 		}
@@ -35,7 +35,7 @@ object Skills extends TargetHelpers {
 		val calcDamage = basicDamage(10, Agility, Strength) ~ Piercing ~ attackerSource ~ randomChanceMultiplier ~ criticalMultiplier(0.2, 2)
 
 		def activate(user: Combattant, target: Target, mods: BattleModifiers) = {
-			target.project[HasResources].toList map { t =>
+			target.projectAs[HasResources].toList map { t =>
 				DamageResource(t, HP, calcDamage(user, target, mods))
 			}
 		}
@@ -46,7 +46,7 @@ object Skills extends TargetHelpers {
 		val calcDamage = basicDamage(15, Strength, Strength) ~ Blunt ~ attackerSource ~ randomChanceMultiplier ~ criticalMultiplier(0.05, 2)
 
 		def activate(user: Combattant, target: Target, mods: BattleModifiers) = {
-			target.project[HasResources].toList map { t =>
+			target.projectAs[HasResources].toList map { t =>
 				DamageResource(t, HP, calcDamage(user, target, mods))
 			}
 		}

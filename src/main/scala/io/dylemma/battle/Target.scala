@@ -15,7 +15,7 @@ trait TargetHelpers {
 	}
 
 	implicit class TargetProjectable(target: Target) {
-		def project[T: TargetProjector] = implicitly[TargetProjector[T]].project(target)
+		def projectAs[T: TargetProjector] = implicitly[TargetProjector[T]].project(target)
 	}
 
 	implicit object TargetCombattantProjector extends TargetProjector[Combattant] {
