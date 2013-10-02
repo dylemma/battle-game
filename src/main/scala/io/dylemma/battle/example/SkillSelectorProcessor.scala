@@ -46,7 +46,7 @@ object SkillSelectorProcessor {
 	}
 
 	def main(args: Array[String]): Unit = {
-		val target = new CombattantTarget(new Combattant(HP -> 200, Strength -> 10) { override def toString = "Villain" })
+		val target = new CombattantTarget(new Combattant(HP -> 50, Strength -> 10) { override def toString = "Villain" })
 		val processor = new SkillSelectorProcessor(skills, hero, target)
 		val q = new EventProcessor(Set(processor, SkillProcessor, new ResourceModificationProcessor), BattleModifiers.empty)
 

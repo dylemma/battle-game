@@ -16,7 +16,13 @@ class ResourceModificationProcessor extends EventHandler {
 			if (Damage.isCritical(dmg)) debug("A critical hit!")
 			val depleted = resource deplete dmg.amount.toInt
 			debug(s"$target lost $depleted $res")
-			Nil // TODO - death conditions?
+
+			target match {
+				case cmb: Combattant if resource.isEmpty =>
+					debug(s"$cmb was downed!")
+					List(NewEvent(CombattantDowned(cmb)))
+				case _ => Nil
+			}
 
 		case RestoreResource(target, res, amount) =>
 			val resource = target getResource res

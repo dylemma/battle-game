@@ -48,7 +48,7 @@ object DamageFormula {
 			dmgOpt getOrElse Damage(0)
 	}
 
-	/** Damage Calculation that returns a critical-hit multipler.
+	/** Damage Modification that randomly a critical-hit multipler based on the `baseChance` probability.
 	  * @param baseChance A number from 0 to 1 that represents the percentage chance of getting a crit
 	  * @param mult The damage multiplier upon getting a crit
 	  * @return The damage multiplier which will be 1 if no crit, or `mult` if crit.
@@ -65,7 +65,7 @@ object DamageFormula {
 			else originalDamage
 	}
 
-	/** Damage Calculation that returns a damage multiplier based on random chance.
+	/** Damage Modification that adds a random multiplier between 85% and 100%
 	  * @return A damage multiplier in between 85% and 100% inclusive.
 	  */
 	def randomChanceMultiplier: DamageModification = {
@@ -75,4 +75,9 @@ object DamageFormula {
 			originalDamage x Multiplier(mult)
 	}
 
+	/** Damage Modification that attributes the damage to the attacker */
+	def attackerSource: DamageModification = {
+		case (attacker, defender, mods) => originalDamage =>
+			originalDamage x Source(CombattantTarget(attacker))
+	}
 }

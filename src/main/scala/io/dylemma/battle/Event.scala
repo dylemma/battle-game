@@ -15,20 +15,20 @@ object Event {
 }
 
 // Turn Begin+End Markers
-case object TurnBegin extends Event with UnprioritizedEvent
-case object TurnEnd extends Event with UnprioritizedEvent
+case object TurnBegin extends UnprioritizedEvent
+case object TurnEnd extends UnprioritizedEvent
 
 // Damage and Healing
-case class DamageResource(target: HasResources, resource: ResourceKey, damage: Damage) extends Event with UnprioritizedEvent
-case class RestoreResource(target: HasResources, resource: ResourceKey, amount: Int) extends Event with UnprioritizedEvent
+case class DamageResource(target: HasResources, resource: ResourceKey, damage: Damage) extends UnprioritizedEvent
+case class RestoreResource(target: HasResources, resource: ResourceKey, amount: Int) extends UnprioritizedEvent
 
 // Add+Remove Battle Modifiers
-case class AddBattleModifier(mod: BattleModifier) extends Event with UnprioritizedEvent
-case class RemoveBattleModifier(mod: BattleModifier) extends Event with UnprioritizedEvent
+case class AddBattleModifier(mod: BattleModifier) extends UnprioritizedEvent
+case class RemoveBattleModifier(mod: BattleModifier) extends UnprioritizedEvent
 
 // Add+Remove Event Handlers
-case class AddEventHandler(handler: EventHandler) extends Event with UnprioritizedEvent
-case class RemoveEventHandler(handler: EventHandler) extends Event with UnprioritizedEvent
+case class AddEventHandler(handler: EventHandler) extends UnprioritizedEvent
+case class RemoveEventHandler(handler: EventHandler) extends UnprioritizedEvent
 
 trait Item // TODO: implement
 
@@ -44,3 +44,6 @@ case class CombattantAction(combattant: Combattant, action: Action) extends Even
 		case SkillUse(skill: Skill, target: Target) => Priority(Event.skillPriority) #> skill.calculatePriority(combattant, target, mods)
 	}
 }
+
+// Combattant Dies
+case class CombattantDowned(combattant: Combattant) extends UnprioritizedEvent

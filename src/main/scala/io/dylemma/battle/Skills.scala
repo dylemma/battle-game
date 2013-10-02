@@ -21,7 +21,7 @@ object Skills extends TargetHelpers {
 
 	case object Slash extends Skill with UnprioritizedSkill {
 
-		val calcDamage = basicDamage(10, Strength, Strength) ~ Slashing ~ randomChanceMultiplier ~ criticalMultiplier(0.1, 2)
+		val calcDamage = basicDamage(10, Strength, Strength) ~ Slashing ~ attackerSource ~ randomChanceMultiplier ~ criticalMultiplier(0.1, 2)
 
 		def activate(user: Combattant, target: Target, mods: BattleModifiers) = {
 			target.project[HasResources].toList map { t =>
@@ -32,7 +32,7 @@ object Skills extends TargetHelpers {
 
 	case object Stab extends Skill with UnprioritizedSkill {
 
-		val calcDamage = basicDamage(10, Agility, Strength) ~ Piercing ~ randomChanceMultiplier ~ criticalMultiplier(0.2, 2)
+		val calcDamage = basicDamage(10, Agility, Strength) ~ Piercing ~ attackerSource ~ randomChanceMultiplier ~ criticalMultiplier(0.2, 2)
 
 		def activate(user: Combattant, target: Target, mods: BattleModifiers) = {
 			target.project[HasResources].toList map { t =>
@@ -43,7 +43,7 @@ object Skills extends TargetHelpers {
 
 	case object Smash extends Skill with UnprioritizedSkill {
 
-		val calcDamage = basicDamage(15, Strength, Strength) ~ Blunt ~ randomChanceMultiplier ~ criticalMultiplier(0.05, 2)
+		val calcDamage = basicDamage(15, Strength, Strength) ~ Blunt ~ attackerSource ~ randomChanceMultiplier ~ criticalMultiplier(0.05, 2)
 
 		def activate(user: Combattant, target: Target, mods: BattleModifiers) = {
 			target.project[HasResources].toList map { t =>

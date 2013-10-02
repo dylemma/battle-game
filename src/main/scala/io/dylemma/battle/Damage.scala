@@ -30,6 +30,10 @@ object Damage {
 		def x(decorator: Decorator) = decorator.decorate(damage)
 	}
 
+	case class Source(source: Target) extends Decorator {
+		def decorate(damage: Damage) = DamageSourceDecorator(source, damage)
+	}
+
 	/** Object that adds a CriticalDamage decorator with the specified multiplier*/
 	case class Critical(multiplier: Double) extends Decorator {
 		def decorate(damage: Damage) = CriticalDamageDecorator(multiplier, damage)
@@ -63,9 +67,16 @@ object Damage {
 		case dec: DamageDecorator => damageType(dec.damage)
 		case DamageAmount(_) => None
 	}
+
+	def source(damage: Damage): Option[Target] = damage match {
+		case DamageSourceDecorator(s, _) => Some(s)
+		case dec: DamageDecorator => source(dec)
+		case DamageAmount(_) => None
+	}
 }
 
 case class DamageTypeDecorator(dtype: DamageType, damage: Damage) extends DamageDecorator
+case class DamageSourceDecorator(source: Target, damage: Damage) extends DamageDecorator
 case class CriticalDamageDecorator(multiplier: Double, damage: Damage) extends DamageDecorator {
 	override def amount = super.amount * multiplier
 }
