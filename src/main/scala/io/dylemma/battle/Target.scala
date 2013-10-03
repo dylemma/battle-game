@@ -4,7 +4,6 @@ trait Target
 
 case class CombattantTarget(combattant: Combattant) extends Target
 case object EnvironmentTarget extends Target
-case object NoTarget extends Target
 // TODO: case class PositionTarget(position: Position) extends Target
 
 object TargetHelpers extends TargetHelpers

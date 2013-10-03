@@ -4,7 +4,7 @@ import scala.collection.GenTraversableOnce
 
 trait BattleModifier
 
-class BattleModifiers(val modifiers: Set[BattleModifier]) extends HasStatModifiers {
+class BattleModifiers(val modifiers: Set[BattleModifier]) extends HasStatModifiers with HasBattleParties {
 	def this(modifiers: BattleModifier*) = this(modifiers.toSet)
 	def this(modifiers: List[BattleModifier]) = this(modifiers.toSet)
 
