@@ -30,7 +30,10 @@ trait HasBattleParties {
 	}
 
 	def getAffiliation(left: BattleParty, right: BattleParty): Option[Affiliation] = {
-		val key = if (right.id < left.id) right -> left else left -> right
-		partyAffiliations get key
+		if (left == right) Some(Affiliation.Friendly)
+		else {
+			val key = if (right.id < left.id) right -> left else left -> right
+			partyAffiliations get key
+		}
 	}
 }

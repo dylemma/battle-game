@@ -11,6 +11,7 @@ import Damage._
 trait Skill {
 	def calculatePriority(user: Combattant, target: Target, mods: BattleModifiers): Priority
 	def activate(user: Combattant, target: Target, mods: BattleModifiers): List[Event]
+	def targetMode: TargetMode
 }
 
 trait UnprioritizedSkill extends Skill {
@@ -28,6 +29,8 @@ object Skills extends TargetHelpers {
 				DamageResource(t, HP, calcDamage(user, target, mods))
 			}
 		}
+
+		val targetMode = TargetMode.OnlyHostile
 	}
 
 	case object Stab extends Skill with UnprioritizedSkill {
@@ -39,6 +42,8 @@ object Skills extends TargetHelpers {
 				DamageResource(t, HP, calcDamage(user, target, mods))
 			}
 		}
+
+		val targetMode = TargetMode.OnlyHostile
 	}
 
 	case object Smash extends Skill with UnprioritizedSkill {
@@ -49,6 +54,21 @@ object Skills extends TargetHelpers {
 			target.projectAs[HasResources].toList map { t =>
 				DamageResource(t, HP, calcDamage(user, target, mods))
 			}
+		}
+
+		val targetMode = TargetMode.OnlyHostile
+	}
+
+	case object QuarterHeal extends Skill with UnprioritizedSkill {
+		val targetMode = TargetMode.OnlyFriendly
+		def activate(user: Combattant, target: Target, mods: BattleModifiers) = {
+			val restoreOpt = for {
+				ally <- target.projectAs[HasResources]
+			} yield {
+				val maxHp = ally.getResource(HP).max
+				RestoreResource(ally, HP, maxHp / 4)
+			}
+			restoreOpt.toList
 		}
 	}
 }
