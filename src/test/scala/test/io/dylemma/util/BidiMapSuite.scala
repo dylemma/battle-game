@@ -36,4 +36,21 @@ class BidiMapSuite extends FunSuite {
 		assert(map.size == 3 && map.entries.toList == pairs)
 	}
 
+	test("equality and hash code for identiacal but separate instances") {
+		val map1 = BidiMap(1 -> "a", 2 -> "b", 3 -> "c")
+		val map2 = BidiMap(1 -> "a", 2 -> "b", 3 -> "c")
+		assert(map1 == map2 && map1.hashCode == map2.hashCode)
+	}
+
+	test("equality and hash code for identical maps with different orders") {
+		val map1 = BidiMap(3 -> "c", 2 -> "b", 1 -> "a")
+		val map2 = BidiMap(1 -> "a", 2 -> "b", 3 -> "c")
+		assert(map1 == map2 && map1.hashCode == map2.hashCode)
+	}
+
+	test("inequality of different maps") {
+		val map1 = BidiMap(1 -> "a", 2 -> "b")
+		val map2 = BidiMap(1 -> "c", 2 -> "d")
+		assert(map1 != map2)
+	}
 }

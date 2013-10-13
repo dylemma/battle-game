@@ -1,6 +1,7 @@
 package io.dylemma.util
 
 import scala.collection.mutable.HashMap
+import scala.util.hashing.MurmurHash3
 
 trait BidiMap[L, R] {
 	def fromLeft(left: L): Option[R]
@@ -9,6 +10,14 @@ trait BidiMap[L, R] {
 	def size: Int
 
 	override def toString = entries.mkString("BidiMap(", ", ", ")")
+
+	override def equals(that: Any) = that match {
+		case thatMap: BidiMap[_, _] =>
+			entries.toSet == thatMap.entries.toSet
+		case _ => false
+	}
+
+	override def hashCode = MurmurHash3.unorderedHash(entries)
 }
 
 object BidiMap {
