@@ -43,6 +43,15 @@ trait Position {
 			hash ^= (ax.hashCode ^ v.hashCode)
 		hash
 	}
+
+	override def toString = {
+		val values = for {
+			ax <- axes.iterator
+			v <- getValue(ax)
+		} yield s"$ax: $v"
+
+		values.mkString("Position(", ", ", ")")
+	}
 }
 
 object Position {

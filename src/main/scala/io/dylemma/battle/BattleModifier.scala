@@ -1,19 +1,22 @@
 package io.dylemma.battle
 
 import scala.collection.GenTraversableOnce
+import scala.collection.mutable.{ HashSet, SetProxy }
+import scala.collection.SetLike
 
 trait BattleModifier
 
-class BattleModifiers(val modifiers: Set[BattleModifier]) extends HasStatModifiers with HasBattleParties {
-	def this(modifiers: BattleModifier*) = this(modifiers.toSet)
-	def this(modifiers: List[BattleModifier]) = this(modifiers.toSet)
+class BattleModifiers(protected val modifiers: Set[BattleModifier]) extends Set[BattleModifier] with SetLike[BattleModifier, BattleModifiers]
+	with HasStatModifiers {
 
 	def +(mod: BattleModifier) = new BattleModifiers(modifiers + mod)
 	def -(mod: BattleModifier) = new BattleModifiers(modifiers - mod)
-	def ++(mods: GenTraversableOnce[BattleModifier]) = new BattleModifiers(modifiers ++ mods)
-	def --(mods: GenTraversableOnce[BattleModifier]) = new BattleModifiers(modifiers -- mods)
+	def contains(mod: BattleModifier) = modifiers contains mod
+	override def empty = BattleModifiers.empty
+	def iterator = modifiers.iterator
 }
 
 object BattleModifiers {
-	lazy val empty = new BattleModifiers(Nil)
+	val empty = new BattleModifiers(Set.empty)
+	def apply(mods: BattleModifier*) = new BattleModifiers(mods.toSet)
 }

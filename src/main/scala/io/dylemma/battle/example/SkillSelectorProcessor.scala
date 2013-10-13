@@ -9,6 +9,7 @@ import Combattant._
 import scala.concurrent.{ Await, ExecutionContext, Future }
 import ExecutionContext.Implicits.global
 import scala.concurrent.duration._
+import io.dylemma.util.BidiMap
 
 object SkillSelectorProcessor {
 	def main(args: Array[String]): Unit = {
@@ -60,9 +61,9 @@ object SkillSelectorProcessor {
 			}
 		}
 
-		def promptTarget(skill: Skill, user: Combattant, mods: BattleModifiers): Option[Target] = {
+		def promptTarget(skill: Skill, user: Combattant, battleground: Battleground): Option[Target] = {
 			val backItem = "[-1: go back]"
-			val possibleTargets = allTargets.filter { case (target, name) => skill.targetMode.canTarget(user, target, mods) }
+			val possibleTargets = allTargets.filter { case (target, name) => skill.targetMode.canTarget(user, target, battleground) }
 			val targetItems = possibleTargets.zipWithIndex map {
 				case ((target, name), index) => s"[$index: $name]"
 			}
@@ -76,40 +77,43 @@ object SkillSelectorProcessor {
 			} catch {
 				case t: Throwable =>
 					println("invalid response")
-					promptTarget(skill, user, mods)
+					promptTarget(skill, user, battleground)
 			}
 		}
 
-		def promptSkillTarget(user: Combattant, mods: BattleModifiers): (Skill, Target) = {
+		def promptSkillTarget(user: Combattant, battleground: Battleground): (Skill, Target) = {
 			printStatus
 			val skill = promptSkill
-			promptTarget(skill, user, mods) match {
-				case None => promptSkillTarget(user, mods)
+			promptTarget(skill, user, battleground) match {
+				case None => promptSkillTarget(user, battleground)
 				case Some(target) => skill -> target
 			}
 		}
 
 		val skillSelectionHandler = new EventHandler {
 			def priority = Priority(10)
-			def handlePreEvent(mods: BattleModifiers) = PartialFunction.empty
-			def handlePostEvent(mods: BattleModifiers) = {
+			def handlePreEvent(battleground: Battleground) = PartialFunction.empty
+			def handlePostEvent(battleground: Battleground) = {
 				case TurnBegin => {
-					val (skill, target) = promptSkillTarget(hero, mods)
+					val (skill, target) = promptSkillTarget(hero, battleground)
 					val s = CombattantAction(hero, SkillUse(skill, target))
 					List(NewEvent(s))
 				}
 			}
 		}
 
-		val heroParty = BattleParty(1)
-		val enemyParty = BattleParty(2)
-		val battleMods = new BattleModifiers(
-			BattlePartyAffiliation(heroParty, enemyParty, Affiliation.Hostile),
-			BattlePartyMembership(heroParty, hero),
-			BattlePartyMembership(heroParty, ally),
-			BattlePartyMembership(enemyParty, enemy))
+		object XAxis extends Axis[Int] {
+			override def toString = "x"
+		}
 
-		val q = new EventProcessor(Set(skillSelectionHandler, SkillProcessor, new ResourceModificationProcessor), battleMods)
+		val targetPositions = BidiMap[Target, Position](
+			CombattantTarget(hero) -> PartyAxis(Party.BlueParty) ~ XAxis(1),
+			CombattantTarget(ally) -> PartyAxis(Party.BlueParty) ~ XAxis(2),
+			CombattantTarget(enemy) -> PartyAxis(Party.RedParty) ~ XAxis(1))
+
+		println(targetPositions)
+
+		val q = new EventProcessor(Set(skillSelectionHandler, SkillProcessor, new ResourceModificationProcessor), Battleground(targetPositions, BattleModifiers.empty))
 
 		for (_ <- 1 to 5) q.processAll(TurnBegin, TurnEnd)
 		println("(done)")

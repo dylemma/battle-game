@@ -11,8 +11,8 @@ case class NewEvent(event: Event) extends PostEventReaction
 
 trait EventHandler {
 	def priority: Priority
-	def handlePreEvent(mods: BattleModifiers): PartialFunction[Event, Option[PreEventReaction]]
-	def handlePostEvent(mods: BattleModifiers): PartialFunction[Event, List[PostEventReaction]]
+	def handlePreEvent(battleground: Battleground): PartialFunction[Event, Option[PreEventReaction]]
+	def handlePostEvent(battleground: Battleground): PartialFunction[Event, List[PostEventReaction]]
 }
 
 object EventHandlerHelpers extends EventHandlerHelpers

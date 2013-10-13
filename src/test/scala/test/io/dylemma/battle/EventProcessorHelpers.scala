@@ -1,6 +1,7 @@
 package test.io.dylemma.battle
 
 import io.dylemma.battle._
+import io.dylemma.util.BidiMap
 
 trait EventProcessorHelpers {
 	def collectHappenedEvents(processor: EventProcessor, inputEvents: List[Event]): List[Event] = {
@@ -13,6 +14,6 @@ trait EventProcessorHelpers {
 	}
 
 	def eventProcessor(handlers: EventHandler*): EventProcessor = {
-		EventProcessor(handlers.toSet, BattleModifiers.empty)
+		EventProcessor(handlers.toSet, Battleground(BidiMap(), BattleModifiers.empty))
 	}
 }

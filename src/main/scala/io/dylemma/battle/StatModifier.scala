@@ -18,13 +18,12 @@ object StatModifier {
 	def multiplicative(factor: Double, priority: Int)(target: HasStats, key: StatKey) = StatModifier(target, key, priority, _ * factor)
 }
 
-/** Mixin for an object that contains a set of `BattleModifier`s, providing some convenience methods
+/** Mixin for `BattleModifiers`, providing some convenience methods
   * that calculate effective stat values based on the internal modifier set. Classes that want to mix
   * in this trait must define `val modifiers`. It is expected that the `modifiers` value will never
   * change.
   */
-trait HasStatModifiers {
-	val modifiers: Set[BattleModifier]
+trait HasStatModifiers { self: BattleModifiers =>
 
 	/** Orders StatModifiers descending by priority: higher priority comes earlier in the ordering */
 	implicit val statModifierOrdering: Ordering[StatModifier] = Ordering.by { -_.priority }

@@ -48,7 +48,9 @@ object BidiMap {
 
 		def fromLeft(left: L): Option[R] = leftIndexMap.get(left).map { entriesArray(_)._2 }
 		def fromRight(right: R): Option[L] = rightIndexMap.get(right).map { entriesArray(_)._1 }
-		def entries: Iterable[(L, R)] = entriesArray
+		val entries: Iterable[(L, R)] = new Iterable[(L, R)] {
+			def iterator = entriesArray.iterator
+		}
 		def size = entriesArray.length
 	}
 }

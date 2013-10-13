@@ -7,9 +7,9 @@ class ResourceModificationProcessor extends EventHandler {
 	// this processor should always act last
 	def priority = Priority(Integer.MIN_VALUE)
 
-	def handlePreEvent(mods: BattleModifiers) = PartialFunction.empty
+	def handlePreEvent(battleground: Battleground) = PartialFunction.empty
 
-	def handlePostEvent(mods: BattleModifiers) = {
+	def handlePostEvent(battleground: Battleground) = {
 		case DamageResource(target, res, dmg) =>
 			val resource = target getResource res
 			println("damage: " + dmg)

@@ -17,8 +17,8 @@ class ExpiringEventProcessorSuite extends FunSuite with EventProcessorHelpers {
 		val expirer = new EventHandler with ExpirationHelpers {
 			val exp = new ExpirationCounter(2)
 			def priority = Priority(0)
-			def handlePreEvent(mods: BattleModifiers) = PartialFunction.empty
-			def handlePostEvent(mods: BattleModifiers) = {
+			def handlePreEvent(battleground: Battleground) = PartialFunction.empty
+			def handlePostEvent(battleground: Battleground) = {
 				// exp increments to 1
 				// append a Tock
 				// exp increments to 2
@@ -38,8 +38,8 @@ class ExpiringEventProcessorSuite extends FunSuite with EventProcessorHelpers {
 		val expirer = new EventHandler with ExpirationHelpers {
 			val exp = new ExpirationCounter(2)
 			def priority = Priority(0)
-			def handlePreEvent(mods: BattleModifiers) = PartialFunction.empty
-			def handlePostEvent(mods: BattleModifiers) = {
+			def handlePreEvent(battleground: Battleground) = PartialFunction.empty
+			def handlePostEvent(battleground: Battleground) = {
 				// Tick => exp increments to 1; append a Tock
 				// Tick => exp increments to 2; append a Tock
 				// Tick => expire

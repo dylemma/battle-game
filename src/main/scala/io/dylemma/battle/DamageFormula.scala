@@ -6,8 +6,8 @@ import Damage._
 
 object DamageFormula {
 
-	type DamageCalculation = (Combattant, Target, BattleModifiers) => Damage
-	type DamageModification = (Combattant, Target, BattleModifiers) => (Damage => Damage)
+	type DamageCalculation = (Combattant, Target, Battleground) => Damage
+	type DamageModification = (Combattant, Target, Battleground) => (Damage => Damage)
 
 	/** Allows chaining of DamageModifications and Decorators on a DamageCalculation via the `~` method */
 	implicit class DamageCalculationCombiner(calculation: DamageCalculation) {
@@ -38,10 +38,10 @@ object DamageFormula {
 	  * @return A damage amount (0 or greater)
 	  */
 	def basicDamage(basePower: Int, attackStat: StatKey, defenseStat: StatKey): DamageCalculation = {
-		case (attacker, defender, mods) =>
+		case (attacker, defender, battleground) =>
 			val dmgOpt = for (defStats <- defender.projectAs[HasStats]) yield {
-				val attack = mods.getEffectiveStat(attacker, attackStat)
-				val defense = mods.getEffectiveStat(defStats, defenseStat)
+				val attack = battleground.modifiers.getEffectiveStat(attacker, attackStat)
+				val defense = battleground.modifiers.getEffectiveStat(defStats, defenseStat)
 				val amount = basePower * powerMultiplier * levelModifier(attacker.level) * defenseModifier(attack, defense)
 				Damage(amount)
 			}

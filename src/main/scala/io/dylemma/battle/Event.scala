@@ -1,11 +1,11 @@
 package io.dylemma.battle
 
 trait Event {
-	def calculatePriority(mods: BattleModifiers): Priority
+	def calculatePriority(battleground: Battleground): Priority
 }
 
 trait UnprioritizedEvent extends Event {
-	def calculatePriority(mods: BattleModifiers) = Priority()
+	def calculatePriority(battleground: Battleground) = Priority()
 }
 
 object Event {
@@ -37,11 +37,12 @@ case class SkillUse(skill: Skill, target: Target) extends Action
 case class ItemUse(item: Item, target: Target) extends Action
 case object Flee extends Action
 
+// Combattant takes an action: [skill|item|flee]
 case class CombattantAction(combattant: Combattant, action: Action) extends Event {
-	def calculatePriority(mods: BattleModifiers) = action match {
+	def calculatePriority(battleground: Battleground) = action match {
 		case Flee => Priority(Event.fleePriority)
 		case ItemUse(item: Item, target: Target) => Priority(Event.itemPriority)
-		case SkillUse(skill: Skill, target: Target) => Priority(Event.skillPriority) #> skill.calculatePriority(combattant, target, mods)
+		case SkillUse(skill: Skill, target: Target) => Priority(Event.skillPriority) #> skill.calculatePriority(combattant, target, battleground)
 	}
 }
 

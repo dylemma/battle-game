@@ -10,7 +10,7 @@ object EventProcessor {
 		new DynamicVariable(_ => ())
 }
 
-case class EventProcessor(handlers: Set[EventHandler], mods: BattleModifiers) {
+case class EventProcessor(handlers: Set[EventHandler], battleground: Battleground) {
 
 	private def eventCallback = EventProcessor.callbackVar.value
 
@@ -22,7 +22,7 @@ case class EventProcessor(handlers: Set[EventHandler], mods: BattleModifiers) {
 			case Nil => processor
 			case event :: moreEvents =>
 				val (addedEvents, newProcessor) = processor.processSingle(event)
-				val nextEvents = (moreEvents ++ addedEvents).sortBy { _.calculatePriority(newProcessor.mods) }
+				val nextEvents = (moreEvents ++ addedEvents).sortBy { _.calculatePriority(newProcessor.battleground) }
 				innerProcess(nextEvents, newProcessor)
 		}
 		innerProcess(event :: Nil, this)
@@ -52,7 +52,7 @@ case class EventProcessor(handlers: Set[EventHandler], mods: BattleModifiers) {
 		def recurse(event: Option[Event], handlers: List[EventHandler]): Option[Event] = handlers match {
 			case Nil => event
 			case handler :: nextHandlers => event flatMap { e =>
-				val r = handler.handlePreEvent(mods).lift(e).flatten
+				val r = handler.handlePreEvent(battleground).lift(e).flatten
 				r match {
 					case None => recurse(event, nextHandlers)
 					case Some(CancelEvent) => None
@@ -65,8 +65,16 @@ case class EventProcessor(handlers: Set[EventHandler], mods: BattleModifiers) {
 	}
 
 	protected def updateForEvent(event: Event) = event match {
-		case AddBattleModifier(mod) => this.copy(mods = mods + mod)
-		case RemoveBattleModifier(mod) => this.copy(mods = mods - mod)
+		case AddBattleModifier(mod) =>
+			val m = battleground.modifiers + mod
+			val b = battleground.copy(modifiers = m)
+			this.copy(battleground = b)
+
+		case RemoveBattleModifier(mod) =>
+			val m = battleground.modifiers - mod
+			val b = battleground.copy(modifiers = m)
+			this.copy(battleground = b)
+
 		case AddEventHandler(handler) => this.copy(handlers = handlers + handler)
 		case RemoveEventHandler(handler) => this.copy(handlers = handlers - handler)
 		case _ => this
@@ -75,7 +83,7 @@ case class EventProcessor(handlers: Set[EventHandler], mods: BattleModifiers) {
 	protected def getPostReactions(event: Event): List[PostEventReaction] = {
 		val noReactions: List[PostEventReaction] = Nil
 		handlers.foldLeft(noReactions) { (reactions, handler) =>
-			val r2 = handler.handlePostEvent(mods).lift(event) getOrElse Nil
+			val r2 = handler.handlePostEvent(battleground).lift(event) getOrElse Nil
 			reactions ++ r2
 		}
 	}
