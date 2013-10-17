@@ -10,6 +10,9 @@ import scala.concurrent.{ Await, ExecutionContext, Future }
 import ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import io.dylemma.util.BidiMap
+import EventHandlerSyntax._
+import scala.util.Failure
+import scala.util.Success
 
 object SkillSelectorProcessor {
 	def main(args: Array[String]): Unit = {
@@ -92,12 +95,12 @@ object SkillSelectorProcessor {
 
 		val skillSelectionHandler = new EventHandler {
 			def priority = Priority(10)
-			def handlePreEvent(battleground: Battleground) = PartialFunction.empty
+			def handlePreEvent(context: Battleground) = PartialFunction.empty
 			def handlePostEvent(battleground: Battleground) = {
 				case TurnBegin => {
 					val (skill, target) = promptSkillTarget(hero, battleground)
 					val s = CombattantAction(hero, SkillUse(skill, target))
-					List(NewEvent(s))
+					reactions { s }
 				}
 			}
 		}
@@ -115,8 +118,16 @@ object SkillSelectorProcessor {
 
 		val q = new EventProcessor(Set(skillSelectionHandler, SkillProcessor, new ResourceModificationProcessor), Battleground(targetPositions, BattleModifiers.empty))
 
-		for (_ <- 1 to 5) q.processAll(TurnBegin, TurnEnd)
-		println("(done)")
+		val events = for { i <- 1 to 5; e <- List(TurnBegin, TurnEnd) } yield e
+		println(events)
+		val end = q.processAllFuture(events: _*)
+		end.onComplete {
+			case Failure(e) => e.printStackTrace()
+			case Success(r) => println(r)
+		}
+		Await.ready(end, 30.seconds)
+		println(end.value)
+		println("<done>")
 
 	}
 }

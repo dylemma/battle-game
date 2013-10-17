@@ -9,6 +9,8 @@ import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Await
 import io.dylemma.util.BidiMap
+import scala.util.continuations._
+import Damage._
 
 object Damaging {
 
@@ -21,9 +23,10 @@ object Damaging {
 		val processor = new ResourceModificationProcessor
 		val q = new EventProcessor(Set(processor), Battleground(BidiMap(), BattleModifiers.empty))
 
-		q
-			.process(DamageResource(hero, HP, Damage(10, Fire)))
-			.process(DamageResource(hero, HP, Damage(25, Slashing)))
-
+		val end = q.processAllFuture(
+			DamageResource(hero, HP, Damage(10, Fire)),
+			DamageResource(hero, HP, Damage(25, Slashing)))
+		Await.ready(end, 1.second)
+		println("<done>")
 	}
 }

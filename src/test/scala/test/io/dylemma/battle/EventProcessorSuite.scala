@@ -2,6 +2,8 @@ package test.io.dylemma.battle
 
 import io.dylemma.battle._
 import org.scalatest.FunSuite
+import scala.concurrent.ExecutionContext.Implicits.global
+import EventHandlerSyntax._
 
 class EventProcessorSuite extends FunSuite with EventProcessorHelpers {
 
@@ -13,21 +15,21 @@ class EventProcessorSuite extends FunSuite with EventProcessorHelpers {
 		val queue = eventProcessor()
 		val inputEvents = List(EventA, EventB, EventC)
 		val events = collectHappenedEvents(queue, inputEvents)
-		assert(events == inputEvents)
+		assert(waitFor(events) == inputEvents)
 	}
 
 	test("An EventProcessor will not allow an inputEvent to 'happen' if a processor cancels it") {
 		val cancellor = new EventHandler {
 			def priority = Priority(0)
 			def handlePreEvent(battleground: Battleground) = {
-				case EventA => Some(CancelEvent)
+				case EventA => reactions { CancelEvent }
 			}
 			def handlePostEvent(battleground: Battleground) = PartialFunction.empty
 		}
 		val queue = eventProcessor(cancellor)
 		val inputEvents = List(EventA, EventB)
 		val events = collectHappenedEvents(queue, inputEvents)
-		assert(events == List(EventB))
+		assert(waitFor(events) == List(EventB))
 	}
 
 	test("An EventProcessor will not send a cancelled event to any further processors") {
@@ -35,7 +37,7 @@ class EventProcessorSuite extends FunSuite with EventProcessorHelpers {
 			def priority = Priority(1)
 			override def toString = "EventProcessor(cancel EventA)"
 			def handlePreEvent(battleground: Battleground) = {
-				case EventA => Some(CancelEvent)
+				case EventA => reactions { CancelEvent }
 			}
 			def handlePostEvent(battleground: Battleground) = PartialFunction.empty
 		}
@@ -47,7 +49,7 @@ class EventProcessorSuite extends FunSuite with EventProcessorHelpers {
 			def handlePostEvent(battleground: Battleground) = {
 				case event =>
 					seenEvents += 1
-					Nil
+					noReactions
 			}
 			def handlePreEvent(battleground: Battleground) = PartialFunction.empty
 		}
@@ -55,21 +57,21 @@ class EventProcessorSuite extends FunSuite with EventProcessorHelpers {
 		val queue = eventProcessor(cancellor, seer)
 		val inputEvents = List(EventA, EventB, EventC)
 		val events = collectHappenedEvents(queue, inputEvents)
-		assert(events == List(EventB, EventC) && seenEvents == 2)
+		assert(waitFor(events) == List(EventB, EventC) && seenEvents == 2)
 	}
 
 	test("An EventProcessor handles replacement reactions") {
 		val replacer = new EventHandler {
 			def priority = Priority(0)
 			def handlePreEvent(battleground: Battleground) = {
-				case EventC => Some(ReplaceEvent(EventB))
+				case EventC => reactions { ReplaceEvent(EventB) }
 			}
 			def handlePostEvent(battleground: Battleground) = PartialFunction.empty
 		}
 		val queue = eventProcessor(replacer)
 		val inputEvents = List(EventA, EventB, EventC)
 		val events = collectHappenedEvents(queue, inputEvents)
-		assert(events == List(EventA, EventB, EventB))
+		assert(waitFor(events) == List(EventA, EventB, EventB))
 	}
 
 	test("An EventProcessor handles append reactions") {
@@ -77,11 +79,11 @@ class EventProcessorSuite extends FunSuite with EventProcessorHelpers {
 			def priority = Priority(0)
 			def handlePreEvent(battleground: Battleground) = PartialFunction.empty
 			def handlePostEvent(battleground: Battleground) = {
-				case EventA => List(NewEvent(EventB), NewEvent(EventC))
+				case EventA => reactions { List(EventB, EventC) }
 			}
 		}
 		val queue = eventProcessor(appender)
 		val events = collectHappenedEvents(queue, List(EventA))
-		assert(events == List(EventA, EventB, EventC))
+		assert(waitFor(events) == List(EventA, EventB, EventC))
 	}
 }

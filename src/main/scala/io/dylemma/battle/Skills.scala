@@ -7,6 +7,7 @@ import DamageType._
 import Affiliation._
 import DamageFormula._
 import Damage._
+import EventHandlerSyntax._
 
 trait Skill {
 	def calculatePriority(user: Combattant, target: Target, battleground: Battleground): Priority
@@ -76,10 +77,11 @@ object Skills extends TargetHelpers {
 object SkillProcessor extends EventHandler {
 	def priority = Priority(1)
 
-	def handlePreEvent(battleground: Battleground) = PartialFunction.empty
+	def handlePreEvent(context: Battleground) = PartialFunction.empty
 
-	def handlePostEvent(battleground: Battleground) = {
-		case CombattantAction(user, SkillUse(skill, target)) =>
-			skill.activate(user, target, battleground) map NewEvent
+	def handlePostEvent(context: Battleground) = {
+		case CombattantAction(user, SkillUse(skill, target)) => reactions {
+			skill.activate(user, target, context)
+		}
 	}
 }
