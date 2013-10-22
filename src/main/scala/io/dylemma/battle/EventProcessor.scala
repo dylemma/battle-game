@@ -8,11 +8,11 @@ import scala.concurrent.ExecutionContext
 
 case class EventProcessor(handlers: Set[EventHandler], battleground: Battleground) {
 
-	def processFuture(event: Event)(implicit exc: ExecutionContext): Future[EventProcessor] = {
+	def process(event: Event)(implicit exc: ExecutionContext): Future[EventProcessor] = {
 		def innerProcess(events: List[Event], processor: EventProcessor): Future[EventProcessor] = events match {
 			case Nil => Future.successful(processor)
 			case event :: moreEvents => for {
-				(addedEvents, nextProcessor) <- processor.processSingleFuture(event)
+				(addedEvents, nextProcessor) <- processor.processSingle(event)
 				result <- {
 					val nextEvents = (moreEvents ++ addedEvents).sortBy { _.calculatePriority(nextProcessor.battleground) }
 					innerProcess(nextEvents, nextProcessor)
@@ -23,11 +23,11 @@ case class EventProcessor(handlers: Set[EventHandler], battleground: Battlegroun
 		innerProcess(event :: Nil, this)
 	}
 
-	def processAllFuture(events: Event*)(implicit exc: ExecutionContext): Future[EventProcessor] = {
+	def processAll(events: Event*)(implicit exc: ExecutionContext): Future[EventProcessor] = {
 		def fold(processor: EventProcessor, events: List[Event]): Future[EventProcessor] = events match {
 			case Nil => Future.successful(processor)
 			case event :: nextEvents => for {
-				nextProcessor <- processor.processFuture(event)
+				nextProcessor <- processor.process(event)
 				result <- fold(nextProcessor, nextEvents)
 			} yield result
 		}
@@ -35,14 +35,14 @@ case class EventProcessor(handlers: Set[EventHandler], battleground: Battlegroun
 		fold(this, events.toList)
 	}
 
-	protected def processSingleFuture(event: Event)(implicit exc: ExecutionContext): Future[(List[Event], EventProcessor)] = {
+	protected def processSingle(event: Event)(implicit exc: ExecutionContext): Future[(List[Event], EventProcessor)] = {
 		val handlersSorted = handlers.toList.sortBy(_.priority)
-		val readyEvent = getPreReactionFuture(Some(event))
+		val readyEvent = getPreReaction(Some(event))
 		readyEvent flatMap {
 			case None => Future.successful(Nil -> this)
 			case Some(event) => for {
 				newProcessor <- Future successful updateForEvent(event)
-				postReactions <- newProcessor.getPostReactionsFuture(event)
+				postReactions <- newProcessor.getPostReactions(event)
 			} yield {
 				val addedEvents = postReactions collect { case NewEvent(e) => e }
 				addedEvents -> newProcessor
@@ -50,13 +50,16 @@ case class EventProcessor(handlers: Set[EventHandler], battleground: Battlegroun
 		}
 	}
 
-	protected def handlePre(handler: EventHandler, event: Event): Future[Option[PreEventReaction]] = {
-		val pf = handler.handlePreEvent(battleground)
+	protected def handlePre(handler: EventHandler, event: Event)(implicit exc: ExecutionContext): Future[Option[PreEventReaction]] = {
+		val pf = handler match {
+			case sync: SyncEventHandler => sync.handlePreEvent(battleground)
+			case async: AsyncEventHandler => async.handlePreEvent(battleground)
+		}
 		if (pf.isDefinedAt(event)) pf(event).asFuture
 		else Future.successful(None)
 	}
 
-	protected def getPreReactionFuture(event: Option[Event])(implicit exc: ExecutionContext): Future[Option[Event]] = {
+	protected def getPreReaction(event: Option[Event])(implicit exc: ExecutionContext): Future[Option[Event]] = {
 		val handlersSorted = handlers.toList.sortBy(_.priority)
 
 		def recurse(event: Option[Event], handlers: List[EventHandler]): Future[Option[Event]] = handlers match {
@@ -90,14 +93,17 @@ case class EventProcessor(handlers: Set[EventHandler], battleground: Battlegroun
 		case _ => this
 	}
 
-	protected def handlePost(handler: EventHandler, event: Event) = {
-		val pf = handler.handlePostEvent(battleground)
+	protected def handlePost(handler: EventHandler, event: Event)(implicit exc: ExecutionContext) = {
+		val pf = handler match {
+			case sync: SyncEventHandler => sync.handlePostEvent(battleground)
+			case async: AsyncEventHandler => async.handlePostEvent(battleground)
+		}
 		if (pf.isDefinedAt(event)) pf(event).asFuture
 		else Future.successful(Nil)
 	}
 
 	protected type FuturePosts = Future[List[PostEventReaction]]
-	protected def getPostReactionsFuture(event: Event)(implicit exc: ExecutionContext): FuturePosts = {
+	protected def getPostReactions(event: Event)(implicit exc: ExecutionContext): FuturePosts = {
 		def fold(reactions: FuturePosts, handlers: List[EventHandler]): FuturePosts = handlers match {
 			case Nil => reactions
 			case handler :: nextHandlers =>

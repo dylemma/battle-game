@@ -8,6 +8,7 @@ import Affiliation._
 import DamageFormula._
 import Damage._
 import EventHandlerSyntax._
+import scala.concurrent.ExecutionContext
 
 trait Skill {
 	def calculatePriority(user: Combattant, target: Target, battleground: Battleground): Priority
@@ -74,7 +75,7 @@ object Skills extends TargetHelpers {
 	}
 }
 
-object SkillProcessor extends EventHandler {
+object SkillProcessor extends SyncEventHandler {
 	def priority = Priority(1)
 
 	def handlePreEvent(context: Battleground) = PartialFunction.empty

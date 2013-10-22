@@ -93,7 +93,8 @@ object SkillSelectorProcessor {
 			}
 		}
 
-		val skillSelectionHandler = new EventHandler {
+		// TODO: make this an async event handler
+		val skillSelectionHandler = new SyncEventHandler {
 			def priority = Priority(10)
 			def handlePreEvent(context: Battleground) = PartialFunction.empty
 			def handlePostEvent(battleground: Battleground) = {
@@ -120,7 +121,7 @@ object SkillSelectorProcessor {
 
 		val events = for { i <- 1 to 5; e <- List(TurnBegin, TurnEnd) } yield e
 		println(events)
-		val end = q.processAllFuture(events: _*)
+		val end = q.processAll(events: _*)
 		end.onComplete {
 			case Failure(e) => e.printStackTrace()
 			case Success(r) => println(r)

@@ -1,5 +1,6 @@
 package io.dylemma.battle
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.util.continuations._
 
@@ -13,12 +14,14 @@ case class NewEvent(event: Event) extends PostEventReaction
 case class PreEventReactions(asFuture: Future[Option[PreEventReaction]])
 case class PostEventReactions(asFuture: Future[List[PostEventReaction]])
 
-trait EventHandler {
+sealed trait EventHandler {
 	/** The priority of this handler. An EventProcessor will sort handlers and
 	  * pass events through them in their sorted order.
 	  */
 	def priority: Priority
+}
 
+trait SyncEventHandler extends EventHandler {
 	/** React to an event before it happens, possibly by cancelling or replacing it.
 	  *
 	  * @param event The event that is about to happen
@@ -34,10 +37,26 @@ trait EventHandler {
 	  * @return The reactions emitted by this handler in response to the event
 	  */
 	def handlePostEvent(context: Battleground): PartialFunction[Event, PostEventReactions]
-
 }
 
-object EventHandlerSyntax extends EventHandlerSyntax
+trait AsyncEventHandler extends EventHandler {
+
+	/** React to an event before it happens, possibly by cancelling or replacing it.
+	  *
+	  * @param event The event that is about to happen
+	  * @param context Contextual information about where the event is happening
+	  * @return The reactions emitted by this handler in response to the event
+	  */
+	def handlePreEvent(context: Battleground)(implicit exc: ExecutionContext): PartialFunction[Event, PreEventReactions]
+
+	/** React to an event just after it happens, possibly adding new events.
+	  *
+	  * @param event The event that happened
+	  * @param context Contextual information about where the event happened
+	  * @return The reactions emitted by this handler in response to the event
+	  */
+	def handlePostEvent(context: Battleground)(implicit exc: ExecutionContext): PartialFunction[Event, PostEventReactions]
+}
 
 /** Contains some helpful methods for generating Pre and Post EventReactions.
   * Provides `reactions` which accepts a variety of inputs and converts them to
@@ -45,6 +64,8 @@ object EventHandlerSyntax extends EventHandlerSyntax
   * Also provides `noReactions` which can return as either a Pre or Post reaction that
   * includes no actual reactions.
   */
+object EventHandlerSyntax extends EventHandlerSyntax
+
 trait EventHandlerSyntax {
 	trait ReactionsShape[-T, +R] { def convert(thing: T): R }
 	trait NoReactionsShape[+R] { def noReaction: R }

@@ -23,7 +23,7 @@ object Damaging {
 		val processor = new ResourceModificationProcessor
 		val q = new EventProcessor(Set(processor), Battleground(BidiMap(), BattleModifiers.empty))
 
-		val end = q.processAllFuture(
+		val end = q.processAll(
 			DamageResource(hero, HP, Damage(10, Fire)),
 			DamageResource(hero, HP, Damage(25, Slashing)))
 		Await.ready(end, 1.second)

@@ -11,7 +11,7 @@ import scala.concurrent.duration._
 trait EventProcessorHelpers {
 	def collectHappenedEvents(processor: EventProcessor, inputEvents: List[Event])(implicit exc: ExecutionContext): Future[List[Event]] = {
 		val lb = List.newBuilder[Event]
-		val handler = new EventHandler {
+		val handler = new SyncEventHandler {
 			def priority = Priority(0)
 			def handlePreEvent(x: Battleground) = PartialFunction.empty
 			def handlePostEvent(x: Battleground) = {
@@ -22,7 +22,7 @@ trait EventProcessorHelpers {
 		}
 		val p = processor.copy(handlers = processor.handlers + handler)
 		for {
-			_ <- p.processAllFuture(inputEvents: _*)
+			_ <- p.processAll(inputEvents: _*)
 		} yield lb.result
 	}
 
@@ -30,5 +30,10 @@ trait EventProcessorHelpers {
 
 	def eventProcessor(handlers: EventHandler*): EventProcessor = {
 		EventProcessor(handlers.toSet, Battleground(BidiMap(), BattleModifiers.empty))
+	}
+
+	object SyncExecutionContext extends ExecutionContext {
+		def execute(runnable: Runnable) = runnable.run
+		def reportFailure(t: Throwable) = throw t
 	}
 }

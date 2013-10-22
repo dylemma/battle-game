@@ -3,7 +3,7 @@ package io.dylemma.battle
 import scala.concurrent.ExecutionContext
 import EventHandlerSyntax._
 
-class ResourceModificationProcessor extends EventHandler {
+class ResourceModificationProcessor extends SyncEventHandler {
 
 	// this processor should always act last
 	def priority = Priority(Integer.MIN_VALUE)
