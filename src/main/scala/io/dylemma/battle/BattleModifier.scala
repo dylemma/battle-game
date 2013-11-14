@@ -6,8 +6,7 @@ import scala.collection.SetLike
 
 trait BattleModifier
 
-class BattleModifiers(protected val modifiers: Set[BattleModifier]) extends Set[BattleModifier] with SetLike[BattleModifier, BattleModifiers]
-	with HasStatModifiers {
+class BattleModifiers(protected val modifiers: Set[BattleModifier]) extends Set[BattleModifier] with SetLike[BattleModifier, BattleModifiers] {
 
 	def +(mod: BattleModifier) = new BattleModifiers(modifiers + mod)
 	def -(mod: BattleModifier) = new BattleModifiers(modifiers - mod)

@@ -1,6 +1,6 @@
 package io.dylemma.battle
 
-class Resource(val max: Int) {
+class Resource(val max: Int) extends Mutable {
 	private var _current = max
 	def current = _current
 	private def current_=(c: Int) = { _current = c }

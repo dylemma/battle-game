@@ -40,8 +40,8 @@ object DamageFormula {
 	def basicDamage(basePower: Int, attackStat: StatKey, defenseStat: StatKey): DamageCalculation = {
 		case (attacker, defender, battleground) =>
 			val dmgOpt = for (defStats <- defender.projectAs[HasStats]) yield {
-				val attack = battleground.modifiers.getEffectiveStat(attacker, attackStat)
-				val defense = battleground.modifiers.getEffectiveStat(defStats, defenseStat)
+				val attack = attacker.getEffectiveStat(attackStat) //battleground.modifiers.getEffectiveStat(attacker, attackStat)
+				val defense = defStats.getEffectiveStat(defenseStat) //battleground.modifiers.getEffectiveStat(defStats, defenseStat)
 				val amount = basePower * powerMultiplier * levelModifier(attacker.level) * defenseModifier(attack, defense)
 				Damage(amount)
 			}

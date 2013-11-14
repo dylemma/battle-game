@@ -17,6 +17,7 @@ object BattlesBuild extends Build {
 	object deps {
 		val akka = "com.typesafe.akka" %% "akka-actor" % "2.2.3"
 		val scalatest = "org.scalatest" %% "scalatest" % "1.9.1"
+		val scalaAsync = "org.scala-lang.modules" %% "scala-async" % "0.9.0-M2"
 		val sprayCan = "io.spray" % "spray-can" % "1.2-RC2"
 		val sprayJson = "io.spray" %% "spray-json" % "1.2.5"
 		
@@ -31,6 +32,7 @@ object BattlesBuild extends Build {
 		deps.akka,
 		deps.sprayCan,
 		deps.sprayJson,
+		deps.scalaAsync,
 		deps.scalatest % "test"
 	)
 	

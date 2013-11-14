@@ -5,6 +5,7 @@ import scala.util.DynamicVariable
 import scala.util.continuations._
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
+import scala.async.Async.{ async, await }
 
 case class EventProcessor(handlers: Set[EventHandler], battleground: Battleground) {
 
@@ -37,15 +38,15 @@ case class EventProcessor(handlers: Set[EventHandler], battleground: Battlegroun
 
 	protected def processSingle(event: Event)(implicit exc: ExecutionContext): Future[(List[Event], EventProcessor)] = {
 		val handlersSorted = handlers.toList.sortBy(_.priority)
-		val readyEvent = getPreReaction(Some(event))
-		readyEvent flatMap {
-			case None => Future.successful(Nil -> this)
-			case Some(event) => for {
-				newProcessor <- Future successful updateForEvent(event)
-				postReactions <- newProcessor.getPostReactions(event)
-			} yield {
-				val addedEvents = postReactions collect { case NewEvent(e) => e }
-				addedEvents -> newProcessor
+		async {
+			val readyEvent = await { getPreReaction(Some(event)) }
+			readyEvent match {
+				case None => Nil -> this
+				case Some(event) =>
+					val newProcessor = updateForEvent(event)
+					val postReactions = await { newProcessor.getPostReactions(event) }
+					val addedEvents = postReactions collect { case NewEvent(e) => e }
+					addedEvents -> newProcessor
 			}
 		}
 	}
@@ -62,14 +63,16 @@ case class EventProcessor(handlers: Set[EventHandler], battleground: Battlegroun
 	protected def getPreReaction(event: Option[Event])(implicit exc: ExecutionContext): Future[Option[Event]] = {
 		val handlersSorted = handlers.toList.sortBy(_.priority)
 
-		def recurse(event: Option[Event], handlers: List[EventHandler]): Future[Option[Event]] = handlers match {
-			case Nil => Future.successful(event)
-			case handler :: nextHandlers => event match {
-				case None => Future.successful(None)
-				case Some(e) => handlePre(handler, e) flatMap {
-					case None => recurse(event, nextHandlers)
-					case Some(CancelEvent) => Future.successful(None)
-					case Some(ReplaceEvent(rep)) => recurse(Some(rep), nextHandlers)
+		def recurse(event: Option[Event], handlers: List[EventHandler]): Future[Option[Event]] = async {
+			handlers match {
+				case Nil => event
+				case handler :: nextHandlers => event match {
+					case None => None
+					case Some(e) => await { handlePre(handler, e) } match {
+						case None => await { recurse(event, nextHandlers) }
+						case Some(CancelEvent) => None
+						case Some(ReplaceEvent(rep)) => await { recurse(Some(rep), nextHandlers) }
+					}
 				}
 			}
 		}
@@ -116,4 +119,5 @@ case class EventProcessor(handlers: Set[EventHandler], battleground: Battlegroun
 
 		fold(Future.successful(Nil), handlers.toList.sortBy { _.priority })
 	}
+
 }

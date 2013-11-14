@@ -119,14 +119,39 @@ object SkillSelectorProcessor {
 
 		val q = new EventProcessor(Set(skillSelectionHandler, SkillProcessor, new ResourceModificationProcessor), Battleground(targetPositions, BattleModifiers.empty))
 
-		val events = for { i <- 1 to 5; e <- List(TurnBegin, TurnEnd) } yield e
-		println(events)
-		val end = q.processAll(events: _*)
+		def checkEnd(battle: Battleground): Boolean = {
+			enemy.getResource(HP).isEmpty ||
+				(hero.getResource(HP).isEmpty && ally.getResource(HP).isEmpty)
+		}
+
+		def runBattle(q: EventProcessor): Future[EventProcessor] = {
+			import scala.async.Async.{ async, await }
+
+			def doTurnBegin(q0: EventProcessor): Future[EventProcessor] = async {
+				println("Turn Begins!")
+				val q1 = await { q0.process(TurnBegin) }
+				if (checkEnd(q1.battleground)) q1
+				else await { doTurnEnd(q1) }
+			}
+
+			def doTurnEnd(q0: EventProcessor): Future[EventProcessor] = async {
+				println("Turn Ends...")
+				val q1 = await { q0.process(TurnEnd) }
+				if (checkEnd(q1.battleground)) q1
+				else await { doTurnBegin(q1) }
+			}
+
+			doTurnBegin(q)
+		}
+
+		//		val events = for { i <- 1 to 5; e <- List(TurnBegin, TurnEnd) } yield e
+		//		println(events)
+		val end = runBattle(q) //q.processAll(events: _*)
 		end.onComplete {
 			case Failure(e) => e.printStackTrace()
 			case Success(r) => println(r)
 		}
-		Await.ready(end, 30.seconds)
+		Await.ready(end, Duration.Inf)
 		println(end.value)
 		println("<done>")
 

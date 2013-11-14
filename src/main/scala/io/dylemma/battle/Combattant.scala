@@ -4,7 +4,7 @@ import ResourceKey._
 import language.implicitConversions
 import Combattant._
 
-class Combattant(params: CombattantParam*) extends HasResources with HasStats {
+class Combattant(params: CombattantParam*) extends Mutable with HasResources with HasStats {
 
 	lazy val level = {
 		params collectFirst { case CombattantLevel(lv) => lv } getOrElse 1
