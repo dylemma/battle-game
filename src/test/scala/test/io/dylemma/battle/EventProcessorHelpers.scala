@@ -13,8 +13,8 @@ trait EventProcessorHelpers {
 		val lb = List.newBuilder[Event]
 		val handler = new SyncEventHandler {
 			def priority = Priority(0)
-			def handlePreEvent(x: Battleground) = PartialFunction.empty
-			def handlePostEvent(x: Battleground) = {
+			def handlePreEvent(context: BattleContext) = PartialFunction.empty
+			def handlePostEvent(context: BattleContext) = {
 				case e =>
 					lb += e
 					noReactions

@@ -13,6 +13,11 @@ import io.dylemma.util.BidiMap
 import EventHandlerSyntax._
 import scala.util.Failure
 import scala.util.Success
+import akka.actor.ActorSystem
+import akka.actor.Props
+import akka.pattern.ask
+import akka.actor.ActorRef
+import akka.util.Timeout
 
 object SkillSelectorProcessor {
 	def main(args: Array[String]): Unit = {
@@ -64,9 +69,9 @@ object SkillSelectorProcessor {
 			}
 		}
 
-		def promptTarget(skill: Skill, user: Combattant, battleground: Battleground): Option[Target] = {
+		def promptTarget(skill: Skill, user: Combattant, context: BattleContext): Option[Target] = {
 			val backItem = "[-1: go back]"
-			val possibleTargets = allTargets.filter { case (target, name) => skill.targetMode.canTarget(user, target, battleground) }
+			val possibleTargets = allTargets.filter { case (target, name) => skill.targetMode.canTarget(user, target, context) }
 			val targetItems = possibleTargets.zipWithIndex map {
 				case ((target, name), index) => s"[$index: $name]"
 			}
@@ -80,15 +85,15 @@ object SkillSelectorProcessor {
 			} catch {
 				case t: Throwable =>
 					println("invalid response")
-					promptTarget(skill, user, battleground)
+					promptTarget(skill, user, context)
 			}
 		}
 
-		def promptSkillTarget(user: Combattant, battleground: Battleground): (Skill, Target) = {
+		def promptSkillTarget(user: Combattant, context: BattleContext): (Skill, Target) = {
 			printStatus
 			val skill = promptSkill
-			promptTarget(skill, user, battleground) match {
-				case None => promptSkillTarget(user, battleground)
+			promptTarget(skill, user, context) match {
+				case None => promptSkillTarget(user, context)
 				case Some(target) => skill -> target
 			}
 		}
@@ -96,12 +101,27 @@ object SkillSelectorProcessor {
 		// TODO: make this an async event handler
 		val skillSelectionHandler = new SyncEventHandler {
 			def priority = Priority(10)
-			def handlePreEvent(context: Battleground) = PartialFunction.empty
-			def handlePostEvent(battleground: Battleground) = {
+			def handlePreEvent(context: BattleContext) = PartialFunction.empty
+			def handlePostEvent(context: BattleContext) = {
 				case TurnBegin => {
-					val (skill, target) = promptSkillTarget(hero, battleground)
+					val (skill, target) = promptSkillTarget(hero, context)
 					val s = CombattantAction(hero, SkillUse(skill, target))
 					reactions { s }
+				}
+			}
+		}
+
+		/** Checks to see if either party is dead; if so, it reacts with a
+		  * BattleEnd event.
+		  */
+		val battleEndHandler = new SyncEventHandler {
+			def priority = Priority()
+			def handlePreEvent(context: BattleContext) = PartialFunction.empty
+			def handlePostEvent(context: BattleContext) = {
+				case _ => {
+					val isOver = (enemy.getResource(HP).isEmpty) ||
+						(hero.getResource(HP).isEmpty && ally.getResource(HP).isEmpty)
+					if (isOver) reactions { BattleEnd } else noReactions
 				}
 			}
 		}
@@ -117,43 +137,73 @@ object SkillSelectorProcessor {
 
 		println(targetPositions)
 
-		val q = new EventProcessor(Set(skillSelectionHandler, SkillProcessor, new ResourceModificationProcessor), Battleground(targetPositions, BattleModifiers.empty))
+		val actorSystem = ActorSystem("BattleExample")
+		val battleActor = {
+			val a = actorSystem.actorOf(Props[Battle])
 
-		def checkEnd(battle: Battleground): Boolean = {
-			enemy.getResource(HP).isEmpty ||
-				(hero.getResource(HP).isEmpty && ally.getResource(HP).isEmpty)
+			val handlers = List(
+				skillSelectionHandler, battleEndHandler, SkillProcessor, new ResourceModificationProcessor)
+			for (handler <- handlers) a ! Battle.Update(AddEventHandler(handler))
+
+			val combattants = Map(
+				hero -> PartyAxis(Party.BlueParty) ~ XAxis(1),
+				ally -> PartyAxis(Party.BlueParty) ~ XAxis(2),
+				enemy -> PartyAxis(Party.RedParty) ~ XAxis(1))
+
+			for { (cmb, pos) <- combattants }
+				a ! Battle.Update(TargetMoved(CombattantTarget(cmb), Position.empty, pos))
+
+			a
 		}
 
-		def runBattle(q: EventProcessor): Future[EventProcessor] = {
+		def runBattle(battleActor: ActorRef): Future[BattleContext] = {
 			import scala.async.Async.{ async, await }
+			implicit val timeout = Timeout(10.seconds)
 
-			def doTurnBegin(q0: EventProcessor): Future[EventProcessor] = async {
-				println("Turn Begins!")
-				val q1 = await { q0.process(TurnBegin) }
-				if (checkEnd(q1.battleground)) q1
-				else await { doTurnEnd(q1) }
+			async {
+				val ctx = await { (battleActor ? Battle.GetContext).mapTo[BattleContext] }
+
+				println("running battle")
+				await { battleActor ? BattleBegin }
+				println("battle begain")
+
+				def doTurnBegin(): Future[BattleContext] = async {
+					println("turn begins!")
+					if (ctx.isFinished) ctx
+					else {
+						val ack = await { battleActor ? TurnBegin }
+						await { doTurnEnd() }
+					}
+				}
+
+				def doTurnEnd(): Future[BattleContext] = async {
+					println("turn ended...")
+					if (ctx.isFinished) ctx
+					else {
+						val ack = await { battleActor ? TurnBegin }
+						await { doTurnBegin() }
+					}
+				}
+
+				await { doTurnBegin() }
+				ctx
 			}
-
-			def doTurnEnd(q0: EventProcessor): Future[EventProcessor] = async {
-				println("Turn Ends...")
-				val q1 = await { q0.process(TurnEnd) }
-				if (checkEnd(q1.battleground)) q1
-				else await { doTurnBegin(q1) }
-			}
-
-			doTurnBegin(q)
 		}
 
-		//		val events = for { i <- 1 to 5; e <- List(TurnBegin, TurnEnd) } yield e
-		//		println(events)
-		val end = runBattle(q) //q.processAll(events: _*)
-		end.onComplete {
-			case Failure(e) => e.printStackTrace()
-			case Success(r) => println(r)
+		val end = runBattle(battleActor)
+		end.onComplete { value =>
+			value match {
+				case Failure(e) => println(s"Battle failed to finish: $e")
+				case Success(r) => println(s"Battle finished with result: $r")
+			}
+			actorSystem.shutdown()
+			println("<done>")
+
+			import collection.JavaConverters._
+			for { (thread, stack) <- Thread.getAllStackTraces.asScala if !thread.isDaemon && thread.isAlive } {
+				println(s"Still alive non-daemon thread: $thread")
+			}
 		}
-		Await.ready(end, Duration.Inf)
-		println(end.value)
-		println("<done>")
 
 	}
 }

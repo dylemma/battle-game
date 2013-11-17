@@ -8,9 +8,9 @@ class ResourceModificationProcessor extends SyncEventHandler {
 	// this processor should always act last
 	def priority = Priority(Integer.MIN_VALUE)
 
-	def handlePreEvent(context: Battleground) = PartialFunction.empty
+	def handlePreEvent(context: BattleContext) = PartialFunction.empty
 
-	def handlePostEvent(battleground: Battleground) = {
+	def handlePostEvent(battleground: BattleContext) = {
 		case DamageResource(target, res, dmg) =>
 			val resource = target getResource res
 			println("damage: " + dmg)

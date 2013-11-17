@@ -22,10 +22,10 @@ class EventProcessorSuite extends FunSuite with EventProcessorHelpers {
 	test("An EventProcessor will not allow an inputEvent to 'happen' if a processor cancels it") {
 		val cancellor = new SyncEventHandler {
 			def priority = Priority(0)
-			def handlePreEvent(battleground: Battleground) = {
+			def handlePreEvent(context: BattleContext) = {
 				case EventA => reactions { CancelEvent }
 			}
-			def handlePostEvent(battleground: Battleground) = PartialFunction.empty
+			def handlePostEvent(context: BattleContext) = PartialFunction.empty
 		}
 		val queue = eventProcessor(cancellor)
 		val inputEvents = List(EventA, EventB)
@@ -37,22 +37,22 @@ class EventProcessorSuite extends FunSuite with EventProcessorHelpers {
 		val cancellor = new SyncEventHandler {
 			def priority = Priority(1)
 			override def toString = "EventProcessor(cancel EventA)"
-			def handlePreEvent(battleground: Battleground) = {
+			def handlePreEvent(context: BattleContext) = {
 				case EventA => reactions { CancelEvent }
 			}
-			def handlePostEvent(battleground: Battleground) = PartialFunction.empty
+			def handlePostEvent(context: BattleContext) = PartialFunction.empty
 		}
 
 		var seenEvents = 0
 		val seer = new SyncEventHandler {
 			def priority = Priority(0)
 			override def toString = "EventProcessor(increment counter)"
-			def handlePostEvent(battleground: Battleground) = {
+			def handlePostEvent(context: BattleContext) = {
 				case event =>
 					seenEvents += 1
 					noReactions
 			}
-			def handlePreEvent(battleground: Battleground) = PartialFunction.empty
+			def handlePreEvent(context: BattleContext) = PartialFunction.empty
 		}
 
 		val queue = eventProcessor(cancellor, seer)
@@ -64,10 +64,10 @@ class EventProcessorSuite extends FunSuite with EventProcessorHelpers {
 	test("An EventProcessor handles replacement reactions") {
 		val replacer = new SyncEventHandler {
 			def priority = Priority(0)
-			def handlePreEvent(battleground: Battleground) = {
+			def handlePreEvent(context: BattleContext) = {
 				case EventC => reactions { ReplaceEvent(EventB) }
 			}
-			def handlePostEvent(battleground: Battleground) = PartialFunction.empty
+			def handlePostEvent(context: BattleContext) = PartialFunction.empty
 		}
 		val queue = eventProcessor(replacer)
 		val inputEvents = List(EventA, EventB, EventC)
@@ -78,8 +78,8 @@ class EventProcessorSuite extends FunSuite with EventProcessorHelpers {
 	test("An EventProcessor handles append reactions") {
 		val appender = new SyncEventHandler {
 			def priority = Priority(0)
-			def handlePreEvent(battleground: Battleground) = PartialFunction.empty
-			def handlePostEvent(battleground: Battleground) = {
+			def handlePreEvent(context: BattleContext) = PartialFunction.empty
+			def handlePostEvent(context: BattleContext) = {
 				case EventA => reactions { List(EventB, EventC) }
 			}
 		}

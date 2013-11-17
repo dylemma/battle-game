@@ -83,3 +83,10 @@ object Position {
 	}
 
 }
+
+trait HasChangingPosition {
+	private var _position = Position.empty
+
+	def position = _position
+	def position_=(newPos: Position) = { _position = newPos }
+}

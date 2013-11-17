@@ -11,13 +11,13 @@ import EventHandlerSyntax._
 import scala.concurrent.ExecutionContext
 
 trait Skill {
-	def calculatePriority(user: Combattant, target: Target, battleground: Battleground): Priority
-	def activate(user: Combattant, target: Target, battleground: Battleground): List[Event]
+	def calculatePriority(user: Combattant, target: Target, context: BattleContext): Priority
+	def activate(user: Combattant, target: Target, context: BattleContext): List[Event]
 	def targetMode: TargetMode
 }
 
 trait UnprioritizedSkill extends Skill {
-	def calculatePriority(user: Combattant, target: Target, battleground: Battleground) = Priority(0)
+	def calculatePriority(user: Combattant, target: Target, context: BattleContext) = Priority(0)
 }
 
 object Skills extends TargetHelpers {
@@ -26,9 +26,9 @@ object Skills extends TargetHelpers {
 
 		val calcDamage = basicDamage(10, Strength, Strength) ~ Slashing ~ attackerSource ~ randomChanceMultiplier ~ criticalMultiplier(0.1, 2)
 
-		def activate(user: Combattant, target: Target, battleground: Battleground) = {
+		def activate(user: Combattant, target: Target, context: BattleContext) = {
 			target.projectAs[HasResources].toList map { t =>
-				DamageResource(t, HP, calcDamage(user, target, battleground))
+				DamageResource(t, HP, calcDamage(user, target, context))
 			}
 		}
 
@@ -39,9 +39,9 @@ object Skills extends TargetHelpers {
 
 		val calcDamage = basicDamage(10, Agility, Strength) ~ Piercing ~ attackerSource ~ randomChanceMultiplier ~ criticalMultiplier(0.2, 2)
 
-		def activate(user: Combattant, target: Target, battleground: Battleground) = {
+		def activate(user: Combattant, target: Target, context: BattleContext) = {
 			target.projectAs[HasResources].toList map { t =>
-				DamageResource(t, HP, calcDamage(user, target, battleground))
+				DamageResource(t, HP, calcDamage(user, target, context))
 			}
 		}
 
@@ -52,9 +52,9 @@ object Skills extends TargetHelpers {
 
 		val calcDamage = basicDamage(15, Strength, Strength) ~ Blunt ~ attackerSource ~ randomChanceMultiplier ~ criticalMultiplier(0.05, 2)
 
-		def activate(user: Combattant, target: Target, battleground: Battleground) = {
+		def activate(user: Combattant, target: Target, context: BattleContext) = {
 			target.projectAs[HasResources].toList map { t =>
-				DamageResource(t, HP, calcDamage(user, target, battleground))
+				DamageResource(t, HP, calcDamage(user, target, context))
 			}
 		}
 
@@ -63,7 +63,7 @@ object Skills extends TargetHelpers {
 
 	case object QuarterHeal extends Skill with UnprioritizedSkill {
 		val targetMode = TargetMode.SameParty
-		def activate(user: Combattant, target: Target, battleground: Battleground) = {
+		def activate(user: Combattant, target: Target, context: BattleContext) = {
 			val restoreOpt = for {
 				ally <- target.projectAs[HasResources]
 			} yield {
@@ -78,9 +78,9 @@ object Skills extends TargetHelpers {
 object SkillProcessor extends SyncEventHandler {
 	def priority = Priority(1)
 
-	def handlePreEvent(context: Battleground) = PartialFunction.empty
+	def handlePreEvent(context: BattleContext) = PartialFunction.empty
 
-	def handlePostEvent(context: Battleground) = {
+	def handlePostEvent(context: BattleContext) = {
 		case CombattantAction(user, SkillUse(skill, target)) => reactions {
 			skill.activate(user, target, context)
 		}

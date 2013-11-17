@@ -28,7 +28,7 @@ trait SyncEventHandler extends EventHandler {
 	  * @param context Contextual information about where the event is happening
 	  * @return The reactions emitted by this handler in response to the event
 	  */
-	def handlePreEvent(context: Battleground): PartialFunction[Event, PreEventReactions]
+	def handlePreEvent(context: BattleContext): PartialFunction[Event, PreEventReactions]
 
 	/** React to an event just after it happens, possibly adding new events.
 	  *
@@ -36,7 +36,7 @@ trait SyncEventHandler extends EventHandler {
 	  * @param context Contextual information about where the event happened
 	  * @return The reactions emitted by this handler in response to the event
 	  */
-	def handlePostEvent(context: Battleground): PartialFunction[Event, PostEventReactions]
+	def handlePostEvent(context: BattleContext): PartialFunction[Event, PostEventReactions]
 }
 
 trait AsyncEventHandler extends EventHandler {
@@ -47,7 +47,7 @@ trait AsyncEventHandler extends EventHandler {
 	  * @param context Contextual information about where the event is happening
 	  * @return The reactions emitted by this handler in response to the event
 	  */
-	def handlePreEvent(context: Battleground)(implicit exc: ExecutionContext): PartialFunction[Event, PreEventReactions]
+	def handlePreEvent(context: BattleContext)(implicit exc: ExecutionContext): PartialFunction[Event, PreEventReactions]
 
 	/** React to an event just after it happens, possibly adding new events.
 	  *
@@ -55,7 +55,7 @@ trait AsyncEventHandler extends EventHandler {
 	  * @param context Contextual information about where the event happened
 	  * @return The reactions emitted by this handler in response to the event
 	  */
-	def handlePostEvent(context: Battleground)(implicit exc: ExecutionContext): PartialFunction[Event, PostEventReactions]
+	def handlePostEvent(context: BattleContext)(implicit exc: ExecutionContext): PartialFunction[Event, PostEventReactions]
 }
 
 /** Contains some helpful methods for generating Pre and Post EventReactions.

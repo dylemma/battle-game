@@ -6,8 +6,8 @@ import Damage._
 
 object DamageFormula {
 
-	type DamageCalculation = (Combattant, Target, Battleground) => Damage
-	type DamageModification = (Combattant, Target, Battleground) => (Damage => Damage)
+	type DamageCalculation = (Combattant, Target, BattleContext) => Damage
+	type DamageModification = (Combattant, Target, BattleContext) => (Damage => Damage)
 
 	/** Allows chaining of DamageModifications and Decorators on a DamageCalculation via the `~` method */
 	implicit class DamageCalculationCombiner(calculation: DamageCalculation) {

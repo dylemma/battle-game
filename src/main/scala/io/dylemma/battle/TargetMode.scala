@@ -3,31 +3,31 @@ package io.dylemma.battle
 import TargetHelpers._
 
 trait TargetMode {
-	def canTarget(user: Combattant, target: Target, battleground: Battleground): Boolean
+	def canTarget(user: Combattant, target: Target, context: BattleContext): Boolean
 }
 
 object TargetMode {
 
 	/** Accepts any target */
 	object AnyTarget extends TargetMode {
-		def canTarget(user: Combattant, target: Target, battleground: Battleground) = true
+		def canTarget(user: Combattant, target: Target, context: BattleContext) = true
 	}
 
 	/** Only accepts the user as the target */
 	object OnlySelf extends TargetMode {
-		def canTarget(user: Combattant, target: Target, battleground: Battleground) = {
+		def canTarget(user: Combattant, target: Target, context: BattleContext) = {
 			target == CombattantTarget(user)
 		}
 	}
 
 	/** Only accepts the `EnvironmentTarget` */
 	object OnlyEnvironment extends TargetMode {
-		def canTarget(user: Combattant, target: Target, battleground: Battleground) = target == EnvironmentTarget
+		def canTarget(user: Combattant, target: Target, context: BattleContext) = target == EnvironmentTarget
 	}
 
 	/** Accepts any target that is a Combattant */
 	object AnyCombattant extends TargetMode {
-		def canTarget(user: Combattant, target: Target, battleground: Battleground) = target match {
+		def canTarget(user: Combattant, target: Target, context: BattleContext) = target match {
 			case CombattantTarget(_) => true
 			case _ => false
 		}
@@ -42,11 +42,11 @@ object TargetMode {
 	abstract class SingleAxisPositionCheck[T](axis: Axis[T]) extends TargetMode {
 		def checkPositions(userPos: T, targetPos: T): Boolean
 
-		def canTarget(user: Combattant, target: Target, battleground: Battleground) = {
+		def canTarget(user: Combattant, target: Target, context: BattleContext) = {
 			val checkOpt = for {
-				userPos <- battleground positionOf user
+				userPos <- context positionOf user
 				userValue <- userPos getValue axis
-				targetPos <- battleground positionOf target
+				targetPos <- context positionOf target
 				targetValue <- targetPos getValue axis
 			} yield checkPositions(userValue, targetValue)
 

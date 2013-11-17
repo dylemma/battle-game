@@ -6,8 +6,11 @@ import scala.util.continuations._
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
 import scala.async.Async.{ async, await }
+import io.dylemma.util.AsyncHelpers._
 
 case class EventProcessor(handlers: Set[EventHandler], battleground: Battleground) {
+
+	import battleground.Implicits._
 
 	def process(event: Event)(implicit exc: ExecutionContext): Future[EventProcessor] = {
 		def innerProcess(events: List[Event], processor: EventProcessor): Future[EventProcessor] = events match {
@@ -44,40 +47,31 @@ case class EventProcessor(handlers: Set[EventHandler], battleground: Battlegroun
 				case None => Nil -> this
 				case Some(event) =>
 					val newProcessor = updateForEvent(event)
-					val postReactions = await { newProcessor.getPostReactions(event) }
-					val addedEvents = postReactions collect { case NewEvent(e) => e }
-					addedEvents -> newProcessor
+					if (newProcessor.battleground.isFinished) {
+						Nil -> newProcessor
+					} else {
+						val postReactions = await { newProcessor.getPostReactions(event) }
+						val addedEvents = postReactions collect { case NewEvent(e) => e }
+						addedEvents -> newProcessor
+					}
 			}
 		}
-	}
-
-	protected def handlePre(handler: EventHandler, event: Event)(implicit exc: ExecutionContext): Future[Option[PreEventReaction]] = {
-		val pf = handler match {
-			case sync: SyncEventHandler => sync.handlePreEvent(battleground)
-			case async: AsyncEventHandler => async.handlePreEvent(battleground)
-		}
-		if (pf.isDefinedAt(event)) pf(event).asFuture
-		else Future.successful(None)
 	}
 
 	protected def getPreReaction(event: Option[Event])(implicit exc: ExecutionContext): Future[Option[Event]] = {
 		val handlersSorted = handlers.toList.sortBy(_.priority)
 
-		def recurse(event: Option[Event], handlers: List[EventHandler]): Future[Option[Event]] = async {
-			handlers match {
-				case Nil => event
-				case handler :: nextHandlers => event match {
-					case None => None
-					case Some(e) => await { handlePre(handler, e) } match {
-						case None => await { recurse(event, nextHandlers) }
-						case Some(CancelEvent) => None
-						case Some(ReplaceEvent(rep)) => await { recurse(Some(rep), nextHandlers) }
-					}
+		handlersSorted.futureFoldLeft(event) {
+			case (None, _) => Future.successful(None)
+			case (Some(e), handler) => async {
+				await { handler.getPreReactions(e) } match {
+					case None => Some(e)
+					case Some(CancelEvent) => None
+					case Some(ReplaceEvent(r)) => Some(r)
 				}
 			}
 		}
 
-		recurse(event, handlersSorted)
 	}
 
 	protected def updateForEvent(event: Event) = event match {
@@ -93,31 +87,23 @@ case class EventProcessor(handlers: Set[EventHandler], battleground: Battlegroun
 
 		case AddEventHandler(handler) => this.copy(handlers = handlers + handler)
 		case RemoveEventHandler(handler) => this.copy(handlers = handlers - handler)
+		case BattleEnd =>
+			val b = battleground.copy(isFinished = true)
+			this.copy(battleground = b)
 		case _ => this
 	}
 
-	protected def handlePost(handler: EventHandler, event: Event)(implicit exc: ExecutionContext) = {
-		val pf = handler match {
-			case sync: SyncEventHandler => sync.handlePostEvent(battleground)
-			case async: AsyncEventHandler => async.handlePostEvent(battleground)
-		}
-		if (pf.isDefinedAt(event)) pf(event).asFuture
-		else Future.successful(Nil)
-	}
-
 	protected type FuturePosts = Future[List[PostEventReaction]]
+
 	protected def getPostReactions(event: Event)(implicit exc: ExecutionContext): FuturePosts = {
-		def fold(reactions: FuturePosts, handlers: List[EventHandler]): FuturePosts = handlers match {
-			case Nil => reactions
-			case handler :: nextHandlers =>
-				val nextReactions = for {
-					accum <- reactions
-					append <- handlePost(handler, event)
-				} yield accum ++ append
-				fold(nextReactions, nextHandlers)
+		val handlersSorted = handlers.toList.sortBy { _.priority }
+
+		handlersSorted.futureFoldLeft(Nil: List[PostEventReaction]) { (reactions, nextHandler) =>
+			async {
+				reactions ++ await { nextHandler.getPostReactions(event) }
+			}
 		}
 
-		fold(Future.successful(Nil), handlers.toList.sortBy { _.priority })
 	}
 
 }
