@@ -41,5 +41,6 @@ object BattlesBuild extends Build {
 		.settings(enableContinuations: _*)
 		.settings(addResolvers)
 		.settings(setDependencies)
+		.settings(LWJGLPlugin.lwjglSettings: _*)
 
 }
