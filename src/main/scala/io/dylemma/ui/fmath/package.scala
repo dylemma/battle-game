@@ -10,4 +10,6 @@ package object fmath {
 	def cos(rads: Float) = math.cos(rads).toFloat
 	def sin(rads: Float) = math.sin(rads).toFloat
 	def tan(rads: Float) = math.tan(rads).toFloat
+
+	def sqrt(n: Float) = math.sqrt(n).toFloat
 }
