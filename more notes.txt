@@ -1,0 +1,142 @@
+Ideas:
+
+I want some kind of system that can process events.
+Each event might cause other events.
+Processing an event should be treated as "blocking".
+
+An example:
+
+input: Hero attacks Skeleton with Sword Swing
+
+result: Animation of sword swing
+result: Animation of Skeleton taking damage
+result: Animation of Skeleton's health bar going down
+result: Text "A critical hit!"
+input: Player presses Space
+result: Text "Skeleton took XX damage..."
+input: Player presses Space
+result: Animation of Skeleton attacking
+result Animation of Hero taking damage
+result: Animation of Hero's health bar going down
+result: Text "Hero was defeated!"
+input: Player presses Space
+result: Game transitions to another screen.
+
+Different types of actions, and where they came from:
+
+UI - displaying animations, graphics, text, etc.
+Backend - battle input processing, AI logic, data manipulation
+User - pressing buttons and other inputs
+
+Program is split between two machines:
+ - Client: for the UI and the User
+ - Server: for the Backend
+
+The two machines must communicate, but the issue is figuring out what actions trigger others,
+and which actions require actions from other components in order to continue.
+
+Examples:
+ - If the UI is going to display a large blob of text, it will be paged into smaller
+   chunks. After each chunk, the UI requires a User input in order to advance to the
+   next chunk.
+ - After the Backend decides that a certain action has been carried out (e.g. "Hero uses
+   Fireball on Enemy"), it needs the UI to carry out an animation for the Hero casting the
+   spell, the Fireball moving, and the Enemy being hit by the fireball. Furthermore, the
+   Backend could also calculate the amount of damage done do the Enemy by the Fireball, so
+   it would want the UI to adjust the Enemy's health bar via some animation, and display
+   some text describing what happened. All of these things could be put in a queue (or some
+   data structure) and sent to the UI. The UI would then have to step through all of the
+   actions, showing animations and text to the user, until finally all of the instructions
+   have been processed. At that point the Backend is allowed to continue.
+ - While in a menu, the user might navigate to some submenu that wasn't already filled in
+   by the Backend's instruction to display the menu. The UI component might ask the Backend
+   for the contents of that submenu.
+ - Also while in a menu, once the user selects an action, that action should be sent to the
+   Backend, which is presumably waiting for that action.
+
+Based on these examples...
+ - The UI serves as the middleman. The Backend never communicates directly with the User,
+   and the User never communicates with the Backend.
+ - When the Backend requires User input, it should ask the UI to perform some task that
+   will result in an "Action" from the User. Actions could just be Integer IDs for simplicity,
+   mapping back to a more significant representation within the Backend. 
+
+The UI should have a predetermined set of available actions. It should have as limited
+knowledge of actual Backend logic as possible, since the two components will be on
+different machines, and will likely be implemented in different languages. Representation
+of tasks and data should probably be JSON or XML, for ease of transmission and parsing.
+Conversely, there will be things that the Backend need not know about the UI. For example,
+character sprites and other image data need not be stored on the server. Instead, they might
+have some identifier associated with them; the server would have an identifier for each
+character's visual appearance, and would send that identifier to the UI when telling the UI
+to display the character.
+
+Low-Level Communication:
+ - The Client and Server could/will communicate over HTTP/HTTPS
+ - The Client answers the Server by initiating a web request to a particular URL, optionally
+   including an Action ID. The very first request won't have an Action ID, as the Server
+   has not initiated a Backend that would expect any Actions.
+ - The Server answers with a list of instructions for the UI to carry out.
+
+Exceptional Scenarios:
+ - The Client makes an invalid request (e.g. an invalid Action ID, or an inactive URL); in
+   this case, the Server should immediately reply with an error message. The Client should
+   then (probably) enter some kind of error state (crash, die, error message, whatever).
+ - The Server replies with some actions, but gets no replies for some prescribed long time;
+   the Server then puts that particular Game into an "idle" state; saving the state to disk
+   and unloading it from memory. This situation is likely to happen if a Player closes the
+   Game UI or walks away for a while. Actually this situation could potentially be ignored;
+   I don't think anything would really be broken if the server waited indefinitely for a
+   new request from the Client, except for the memory leak it causes.
+ - The User closes and reopens the UI, which starts in a "fresh" state. The UI needs to know
+   the appropriate state to display to the User, and must request that information from the
+   Backend. The Backend must reply with the appropriate info, even if it was expecting an
+   Action ID; this request should not fulfil the Backend's request for an Action ID or advance
+   the state.
+
+Player wants to start a new battle:
+ - Client makes a request to /api/battle-start
+ - Server replies with {"battle-id": "someAlphanumericId"}
+ - The value associated with "battle-id" is now the BattleId and will be used in all subsequent
+   requests that interact with the Battle via the Server
+ - Client makes a request to /api/battle/BattleId?action=nil
+ - Server forwards the non-action to the Backend, which runs until some actions are generated.
+   Then the server replies with a JSON representation of those actions.
+ - Client receives the instructions and the UI handles them.
+ - Eventually, a User input is required; once the User selects an action, the Client sends a
+   request to /api/battle/BattleId?action=ActionId
+ - Server receives the ActionId, which should map back to an action that was registered when
+   it decided it needed input from the User. Execution continues.
+
+Some Example UI Instructions:
+
+ - Display Text
+ 	A (potentially long) blob of text is the argument.
+ 	The text may have "hints" in places where the UI can safely break the text into sections.
+ 	Each section requires the User to press Space (or something) to advance.
+ 	The instruction is completed once the User has advanced through all sections.
+ 	There is no "return value"; this instruction generates no Actions.
+
+ - Pick Target
+  	The User must pick a Target from the battlefield.
+  	Arguments may include the targetting mode, target selection limitations, and other things that might affect how the UI reacts to the User's inputs.
+  	Eventually, the User hits Space (or something) to indicate that the current selection is the target. The Client then makes a Request to the Server indicating the choice (signified by some TargetID, similar to an ActionID).
+  	The Server forwards the TargetID to the Backend, which may choose to either accept or reject it.
+  	If rejected, the Request contains an error message that lets the User know that the target was invalid. The User must then go through the same selection process as earlier, in order to pick a new target. This cycle would repeat until the User picks a valid target or cancels the action to select a target. 
+  	Cancellation may be unavailable in some scenarios. If the User navigated to a target selection through a menu, they would be able to return to the menu. Some other scenarios may have nowhere to return to, so they would be forced into the selection.
+
+ - Menu
+ 	The User has many possible actions, and may select one from a Menu.
+ 	The UI displays the menu with choices. Selecting menu items may be an actual selection, or it could be a prompt to open a submenu. An example of this would be selecting the "Items" entry; this would cause a submenu to open, displaying all of the items that the User can pick from.
+ 	Some menu items would lead to entirely new actions. One example of this would be when the User picks a Skill from the "Fight" submenu. This would initiate a "Pick Target" instruction on top of the current Menu.
+ 	Entering Submenus and extra instructions as a result of menu navigation should be undo-able. If the User presses the Cancel button while in a sub[menu|instruction|thing], that sub-thing should be popped off of the menu's "Stack" (whatever state it's keeping) and the UI should behave as if that sub-thing were never opened.
+
+ - Inline Menu for Display Text
+ 	Display a menu that the User must navigate in order to advance from a Displayed text.
+ 	This would generally be limited to things like answering simple "Yes/No" questions, but could potentially be used for more complex interactions.
+ 	The menu should be displayed adjacent to (but not in front of) the text.
+ 	The User may not back out of the menu via pressing Cancel.
+
+Advice for coding the Request/Instruction machine:
+ 	Avoid passing functions around. The state may need to be saved to disk and subsequently reloaded, which could potentially cause problems if there are a bunch of anonymous functions floating around.
+ 	
