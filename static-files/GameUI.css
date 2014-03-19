@@ -1,0 +1,34 @@
+/*******************\
+| Dialog Box Styles |
+\*******************/
+ .dialogBoxOuter {
+ 	display: inline-block;
+ 	border: 1px solid;
+ 	padding: 2px;
+ 	box-sizing: border-box;
+ 	height: 50px;
+ 	width: 250px;
+ 	position: relative;
+ }
+
+ .dialogBoxInner {
+ 	border: 1px solid silver;
+ 	height: 100%;
+ 	box-sizing: border-box;
+ 	padding: 2px;
+ }
+
+ .dialogBoxText {
+ 	display: inline-block;
+ }
+
+ .dialogBoxCursor {
+ 	position: absolute;
+ 	bottom: 0;
+ 	right: 0;
+ 	line-height: 12px;
+ }
+
+ .dialogBoxCursor:after {
+ 	content: '\25BC';
+ }

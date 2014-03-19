@@ -15,10 +15,10 @@ object BattlesBuild extends Build {
 	)
 
 	object deps {
-		val akka = "com.typesafe.akka" %% "akka-actor" % "2.2.3"
+		val akka = "com.typesafe.akka" %% "akka-actor" % "2.3.0"
 		val scalatest = "org.scalatest" %% "scalatest" % "1.9.1"
 		val scalaAsync = "org.scala-lang.modules" %% "scala-async" % "0.9.0-M2"
-		val sprayCan = "io.spray" % "spray-can" % "1.2-RC2"
+		val sprayCan = "io.spray" % "spray-can" % "1.3.1"
 		val sprayJson = "io.spray" %% "spray-json" % "1.2.5"
 		
 		val sprayResolver = "spray repo" at "http://repo.spray.io"

@@ -1,0 +1,33 @@
+<html>
+<head>
+	<title>Index</title>
+	<script src="GameInput.js"></script>
+	<script src="GameUI.js"></script>
+	<script src="GameMaster.js"></script>
+	<script src="DialogBox.js"></script>
+	<link rel="stylesheet" href="GameUI.css"/>
+</head>
+<body>
+	<h1>Index</h1>
+	<p>This is the index!</p>
+
+	<script>
+var gm = Game.Master()
+gm.runGameLoop()
+var body = document.querySelector('body')
+var db = Game.DialogBox(gm)
+var dbui = Game.UI.DialogBox(gm, body)
+var listener = function(state){ dbui.updateState(state) }
+db.addStateListener(listener)
+
+db.sendMessages([
+	"Press space to advance",
+	"Hello! How are you today?",
+	".... are you going to answer?",
+	"Okay I guess you're giving me the silent treatment",
+	"That's fine... I guess... See you later."
+], function(){ console.log('finished all messages') })
+
+	</script>
+</body>
+</html>
