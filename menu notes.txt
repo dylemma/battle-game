@@ -1,0 +1,16 @@
+Fight ->
+	Basic Attack ->
+		TargetMenu(range: 1, bias: 'enemy', aoe: 'point')
+	Fireball ->
+		TargetMenu(range: 5, bias: 'enemy', aoe: {type: 'burst'})
+	Skill 3
+	Skill 4...
+
+Ok so first things first; make a targetting 'menu'.
+
+Bits of information for rendering+interaction;
+
+	- User position
+	- Targetting bias (enemy only, ally only, point target)
+	- Range (min, max)
+	- AOE shape (e.g. circle at target, shape along path of travel, etc)

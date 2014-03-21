@@ -1,0 +1,14 @@
+{
+	"layout": "grid",
+	"numColumns": 2,
+	"numRows": 2,
+	"items": [{
+		"position": {"row": 1, "column": 1},
+		"label": "Fight"
+	},{
+		"position": {"row": 1, "column": 2},
+		"label": "Item"
+	},{
+		"position":
+	}]
+}

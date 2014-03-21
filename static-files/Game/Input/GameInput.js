@@ -1,6 +1,4 @@
-;(function(Game){
-
-	var GameInput = Game.Input = {}
+namespaced('Game', 'Input', function(GameInput){
 
 	function Keyboard(){
 		if(this instanceof Keyboard){
@@ -36,4 +34,4 @@
 
 	GameInput.Keyboard = Keyboard
 
-})(this.Game || (this.Game = {}))
+})

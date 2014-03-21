@@ -14,7 +14,8 @@
 // `progress` - The number of 'steps' taken as part of the typing process.
 // `total` - The total number of 'steps' that must be taken to complete typing.
 
-;(function(Game){
+namespaced('Game', function(Game){
+	console.log('initializing Game.DialogBox')
 
 	Game.DialogBox = function DialogBox(gameMaster){
 		if(this instanceof DialogBox){
@@ -156,4 +157,4 @@
 		}
 	}
 
-})(this.Game || (this.Game = {}))
+})

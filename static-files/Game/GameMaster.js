@@ -1,4 +1,4 @@
-;(function(Game){
+namespaced('Game', function(Game){
 
 	Game.Master = function GameMaster(){
 		if(this instanceof GameMaster){
@@ -56,4 +56,4 @@
 		}
 	}
 
-})(this.Game || (this.Game = {}))
+})
