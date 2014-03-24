@@ -1,6 +1,6 @@
 namespaced('Game', 'UI', function(GameUI){
 
-	GameUI.ActivityIndicator = function ActivityIndicator(gameMaster, parentElement){
+	GameUI.ActivityIndicator = function ActivityIndicator(looper, parentElement){
 		if(this instanceof ActivityIndicator){
 
 			var div = this.div = (function(){
@@ -23,11 +23,11 @@ namespaced('Game', 'UI', function(GameUI){
 			}
 
 
-			this.deactivate = gameMaster.addGameLoopListener(updateHue)
+			this.deactivate = looper.addLoopListener(updateHue)
 			parentElement.appendChild(div)
 
 		} else {
-			return new ActivityIndicator(gameMaster, parentElement)
+			return new ActivityIndicator(looper, parentElement)
 		}
 	}
 

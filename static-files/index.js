@@ -1,9 +1,10 @@
 $(document).ready(function(){
 
-	var gm = Game.Master()
-	gm.runGameLoop()
+	var gm = new Game.Looper()
+	var keyboard = new Game.Input.Keyboard(gm)
+	gm.start()
 	var body = document.querySelector('body')
-	var db = Game.DialogBox(gm)
+	var db = Game.DialogBox(gm, keyboard)
 	var dbui = Game.UI.DialogBoxHtmlWidget(body)
 	var listener = function(state){ dbui.updateState(state) }
 	db.addStateListener(listener)

@@ -1,10 +1,10 @@
-// DialogBox:
+// Game.DialogBox:
 //
 // This file defines the DialogBox class, which represents and manages a virtual
 // dialog box that displays messages that are sent to it, waiting for the use to
 // press space after each 'section'. Changes in the state can be monitored by
 // listener functions, registered by calling `addStateListener`. The state advances
-// over time as part of a GameMaster's game loop.
+// over time as part of a game loop.
 //
 // The state has four important properties:
 // `status` - one of [idle|typing|waiting]
@@ -17,17 +17,17 @@
 namespaced('Game', function(Game){
 	console.log('initializing Game.DialogBox')
 
-	Game.DialogBox = function DialogBox(gameMaster){
+	Game.DialogBox = function DialogBox(looper, keyboard){
 		if(this instanceof DialogBox){
-			InitializeDialogBox(this, gameMaster)
+			InitializeDialogBox(this, looper, keyboard)
 		} else {
-			return new DialogBox(gameMaster)
+			return new DialogBox(looper, keyboard)
 		}
 	}
 
 	var SpaceKeyCode = 32
 
-	function InitializeDialogBox(self, gameMaster){
+	function InitializeDialogBox(self, looper, keyboard){
 
 		/*******************\
 		| Private Variables |
@@ -93,9 +93,7 @@ namespaced('Game', function(Game){
 				state.progress = 0
 				state.text = ''
 
-				currentMessage.removeLoopLogic = gameMaster.addGameLoopListener(function(){
-					runLoopLogic()
-				})
+				currentMessage.removeLoopLogic = looper.addLoopListener(runLoopLogic)
 			} else {
 				// clear the state
 				state.progress = state.total = 0
@@ -119,7 +117,7 @@ namespaced('Game', function(Game){
 				state.text = currentMessage.text
 				broadcastState()
 
-				if(checkForSpacePressed()){
+				if(keyboard.wasKeyPressed(SpaceKeyCode)){
 					finishCurrent()
 					advanceIfReady()
 				}
@@ -127,16 +125,6 @@ namespaced('Game', function(Game){
 				state.text = currentMessage.text.substring(0, ++state.progress)
 				broadcastState()
 			}
-		}
-
-		// Check the gameMaster's keyboard to see if the Space key was pressed
-		function checkForSpacePressed(){
-			var events = gameMaster.keyboard.takeEvents()
-			for(var i in events){
-				var e = events[i]
-				if(e.type == 'keydown' && e.keyCode == SpaceKeyCode) return true
-			}
-			return false
 		}
 
 		// call the completion function for the current message, and
