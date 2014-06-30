@@ -1,0 +1,10 @@
+{
+	"devDependencies": {
+		"browserify": "*",
+		"browserify-shim": "*",
+		"coffeeify": "*"
+	},
+	"browserify-shim": {
+		"jquery": "global:$"
+	}
+}
