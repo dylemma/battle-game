@@ -2,9 +2,11 @@
 	"devDependencies": {
 		"browserify": "*",
 		"browserify-shim": "*",
-		"coffeeify": "*"
+		"coffeeify": "*",
+		"mkdirp": "*"
 	},
 	"browserify-shim": {
-		"jquery": "global:$"
+		"jquery": "global:$",
+		"d3": "global:d3"
 	}
 }
