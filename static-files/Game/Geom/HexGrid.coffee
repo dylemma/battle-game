@@ -30,6 +30,8 @@ hexCornerAngles = {
 	lowerRight: Math.PI * 11 / 6
 }
 
+
+
 ###
 The distance from the center of a hex to one of its edges, i.e. by travelling
 along one of the P/Q/R axes. This value is equal to cos(30 deg), or sqrt(3/4).
@@ -74,3 +76,28 @@ module.exports = class HexGrid
 		x: 2 * @radius * (PAxis.x * p + QAxis.x * q)
 		y: 2 * @radius * (PAxis.y * p + QAxis.y * q)
 	}
+	hexPath: (cp,cq, radius=@radius) ->
+		d = ''
+		M = (x,y) -> d += "M#{x} #{y} "
+		L = (x,y) -> d += "L#{x} #{y} "
+		center = @hexToCart(cp, cq)
+		cx = center.x
+		cy = center.y
+		console.log('cx,cy', cx, cy)
+		cornerPos = (angle) ->
+			console.log 'getCorner', radius, angle, cx
+			x = cx + radius * Math.cos angle
+			y = cy + radius * Math.sin angle
+			{x,y}
+		# start at the end
+		corner = cornerPos(Math.PI * 11 / 6)
+		console.log('corner:', JSON.stringify(corner))
+		{x, y} = cornerPos(Math.PI * 11 / 6)
+		M x, y
+
+		# loop around
+		for s in [1..11] by 2
+			{x, y} = cornerPos(Math.PI * s / 6)
+			L x, y
+		d
+
