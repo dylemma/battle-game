@@ -69,6 +69,29 @@ RAxis = {
 	y: Math.sin(RAxisAngle) * hexDistToEdge
 }
 
+###
+Creates a triangular cosine function with the given `height` as the amplitude.
+The period of the wave is 4*height, e.g. for a height of 3, and input values
+starting at 0, the outputs would be
+
+    [3, 2, 1, 0, -1, -2, -3, -2, -1, 0, 1, 2, 3, 2, 1, ...]
+###
+triangleCos = (height) ->
+	p = height * 4
+	a = height * 2
+	(x) ->
+		# For negative numbers, push them into the positive range,
+		# so that the mod division will return a positive number.
+		if x < 0 then x = (x % p + p)
+
+		Math.abs(x % p - a) - height
+
+clamp = (min,max) ->
+	(x) ->
+		if x > max then max
+		else if x < min then min
+		else x
+
 module.exports = class HexGrid
 	constructor: (@radius) ->
 		@innerRadius = @radius * hexDistToEdge
@@ -83,15 +106,12 @@ module.exports = class HexGrid
 		center = @hexToCart(cp, cq)
 		cx = center.x
 		cy = center.y
-		console.log('cx,cy', cx, cy)
 		cornerPos = (angle) ->
-			console.log 'getCorner', radius, angle, cx
 			x = cx + radius * Math.cos angle
 			y = cy + radius * Math.sin angle
 			{x,y}
 		# start at the end
 		corner = cornerPos(Math.PI * 11 / 6)
-		console.log('corner:', JSON.stringify(corner))
 		{x, y} = cornerPos(Math.PI * 11 / 6)
 		M x, y
 
@@ -101,3 +121,23 @@ module.exports = class HexGrid
 			L x, y
 		d
 
+	###
+	Creates an array of Hex Coordinates that form a ring
+	around the origin, such that each coordinate's tile
+	distance from the origin is equal to the given `radius`.
+	###
+	hexRing: (radius) ->
+		if radius is 0
+			[{ p:0, q:0 }]
+		else
+			radius = Math.abs(radius)
+			height = (radius) * 3 / 2
+			y = triangleCos height
+			count = radius * 6
+			c = clamp(-radius, radius)
+			pxOffset = -height + radius
+			qxOffset = -height
+			for x in [0..count-1]
+				p = c(y(x + pxOffset))
+				q = c(y(x + qxOffset))
+				{p,q}
