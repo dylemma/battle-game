@@ -26,14 +26,37 @@ $ ->
 	group = svg.append('svg:g')
 		.attr 'transform', 'translate(200,200)'
 
-	paths = group.selectAll('.hex').data(hexes).enter().append('svg:path')
+	hexId = (hex) ->
+		{p,q} = hex
+		JSON.stringify {p,q}
+
+	selections = []
+	addSelection = (d) ->
+		selections.unshift d
+		if selections.length > 10 then selections.pop()
+		ids = {}
+		selections.forEach (d) -> ids[hexId d] = 1
+		paths.style 'fill', (d) ->
+			if ids[hexId d] then 'orange' else 'navy'
+
+		aoeMarkerData = selections.map (d,i) ->
+			{tile: d, intensity: (10-i) / 10}
+
+		markers = group.selectAll('.marker').data(aoeMarkerData)
+		markers.exit().remove()
+		markers.enter().append('svg:path').attr 'class', 'marker'
+		markers
+			.attr 'd', (m) -> hexGrid.hexPath m.tile.p, m.tile.q, m.intensity * 13
+			.style 'fill', 'black'
+			.style 'pointer-events', 'none'
+
+	paths = group.selectAll('.hex').data(hexes)
+
+	paths.enter().append('svg:path')
 		.attr 'class', 'hex'
 		.attr 'd', (d) -> hexGrid.hexPath d.p, d.q, 0 # 19.5
 		.style 'fill', 'navy'
-		.on 'mouseover', ->
-			d3.select(this).style 'fill', 'orange'
-		.on 'mouseout', ->
-			d3.select(this).style 'fill', 'navy'
+		.on 'mouseover', addSelection
 	.transition()
 	.delay (d,i) ->
 		{x,y,dist} = d
@@ -42,3 +65,6 @@ $ ->
 	.duration(1500)
 	.ease d3.ease 'elastic'
 		.attr 'd', (d) -> hexGrid.hexPath d.p, d.q, 14.5
+
+
+
